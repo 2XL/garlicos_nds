@@ -1,12 +1,14 @@
 /*------------------------------------------------------------------------------
 
-	"main.c" : fase 1 / master
+	"main.c" : fase 1 / programador M
 
-	Programa de control del sistema operativo GARLIC, versión 0.5
+	Programa de prueba de carga de un fichero ejecutable en formato ELF,
+	efectuando la necesaria relocatación y ejecutando su código.
 
 ------------------------------------------------------------------------------*/
 #include <nds.h>
 #include <filesystem.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #include <garlic_system.h>	// definición de funciones y variables de sistema
@@ -19,7 +21,7 @@ extern int * punixTime;		// puntero a zona de memoria con el tiempo real
 void inicializarSistema() {
 //------------------------------------------------------------------------------
 	
-	_gg_iniGraf();			// inicializar gráficos
+	consoleDemoInit();		// inicializar console sólo para realizar pruebas
 	
 	_gd_seed = *punixTime;	// inicializar semilla para números aleatorios con
 	_gd_seed <<= 16;		// el valor de tiempo real UNIX, desplazado 16 bits
@@ -28,10 +30,8 @@ void inicializarSistema() {
 	irqSet(IRQ_VBLANK, _gp_rsiVBL);
 	irqEnable(IRQ_VBLANK);
 	
-	_gd_psv[0].keyName = 0x4C524147;	// "GARL"
-
 	if (!nitroFSInit()) {
-		_gg_escribir("ERROR: ¡no se puede utilizar NitroFS!", 0);
+		printf("ERROR: ¡no se puede utilizar Nitro File System!");
 		exit(0);
 	}
 }
@@ -41,48 +41,44 @@ void inicializarSistema() {
 int main(int argc, char **argv) {
 //------------------------------------------------------------------------------
 	intFunc start;
-	char string[8];
-
 	inicializarSistema();
 	
-	_gg_escribir("********************************", 0);
-	_gg_escribir("*                              *", 0);
-	_gg_escribir("* Sistema Operativo GARLIC 0.5 *", 0);
-	_gg_escribir("*                              *", 0);
-	_gg_escribir("********************************", 0);
-	_gg_escribir("*** Inicio fase 1\n", 0);
-
-	_gg_escribir("*** Carga de programa HOLA.elf\n", 0);
+	_gp_WaitForVBlank();
+	printf("********************************");
+	printf("*                              *");
+	printf("* Sistema Operativo GARLIC 0.5 *");
+	printf("*                              *");
+	printf("********************************");
+	printf("*** Inicio fase 1_M\n");
+	
+	printf("*** Carga de programa HOLA.elf\n");
 	start = _gm_cargarPrograma("HOLA");
 	if (start)
-	{	
-		_gg_escribir("*** Pusle \'START\' ::\n\n", 0);
+	{	printf("*** Direccion de arranque :\n\t\t%p\n", start);
+		printf("*** Pusle \'START\' ::\n\n");
 		while(1) {
 			_gp_WaitForVBlank();
 			scanKeys();
 			if (keysDown() & KEY_START) break;
 		}
-		
-		_gp_crearProc(start, 3, "HOLA");
-		
-		while (_gp_numProc() > 1)
-		{						// esperar a que termine el proceso pendiente
-			_gg_escribir("*** Test \t", 0);
-			_gi_num2str(string, 5, _gd_tickCount);
-			string[4] = '\t';
-			_gi_num2str(&string[5], 2, _gp_numProc());
-			string[6] = '\n'; string[7] = 0;
-			_gg_escribir(string, 0);
-		}
+		start();
 	} else
-		_gg_escribir("*** Programa NO cargado\n", 0);
+		printf("*** Programa NO cargado\n");
 
-	_gg_escribir("*** Final fase 1\n", 0);
-	
+	printf("*** Final fase 1_M\n");
+
 	while(1) {
 		_gp_WaitForVBlank();
 	}							// parar el procesador en un bucle infinito
 	return 0;
 }
 
+
+
+/* rutina de soporte para _gi_print */
+//------------------------------------------------------------------------------
+void _gg_escribir(char * message, int z) {
+//------------------------------------------------------------------------------
+	printf("%s", message);	// imprimir toda la línea
+}
 
