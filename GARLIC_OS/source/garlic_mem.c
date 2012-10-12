@@ -32,6 +32,45 @@ void _gm_relocatar(unsigned int *destino, char *file, unsigned int pAddr)
 intFunc _gm_cargarPrograma(char *keyName) {
 //---------------------------------------------------------------------------------
 	unsigned int result = 0;
+	
+	const char* path = "/Programas/";
+	//const char* filename = "hola.elf");
+	const char* filename = ("awesum.txt");
+	const char* file_n = ("/Programas/hola.elf");
+	//const char* file_n = ("/Programas/awesum.txt");
+	
+	
+	
+	FILE* inf = fopen(file_n,"rb");
+	
+	if(inf)
+	{
+		printf("\nyes\n");
+		
+		int len;
+		
+		fseek(inf,0,SEEK_END);
+		len = ftell(inf);
+		fseek(inf,0,SEEK_SET);
+		
+		iprintf("\nthe following %d bytes message\nfrom file1.txt is\nbrought to you by fread:\n",len);
+		{
+			char *entireFile = (char*)malloc(len+1);
+			entireFile[len] = 0;
+			if(fread(entireFile,1,len,inf) != len)
+				iprintf("savage error reading the bytes from the file!\n");
+			else
+				iprintf("%s\n-done-\n",entireFile);
+			free(entireFile);
+		}
+			
+		fclose(inf);
+		system("arm-eabi-readelf -h hola.elf");
+	}
+		
+	else printf("\nno\n");
+	
+	
 
 	return ((intFunc) result);
 }
