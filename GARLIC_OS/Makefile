@@ -116,12 +116,12 @@ clean:
 	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).nds
 
 #---------------------------------------------------------------------------------
-run : $(TARGET).nds
+debug : $(TARGET).nds
 	@echo "runing $(TARGET).nds with DesmuME"
 	@$(DESMUME)/DeSmuME.exe $(TARGET).nds &
 
 #---------------------------------------------------------------------------------
-debug : $(TARGET).nds $(TARGET).elf
+run : $(TARGET).nds $(TARGET).elf
 	@echo "testing $(TARGET).nds/.elf with DeSmuME_dev/Insight (gdb) through TCP port=1000"
 	@$(DESMUME)/DeSmuME_dev.exe --arm9gdb=1000 $(TARGET).nds &
 	@$(DEVKITPRO)/insight/bin/arm-eabi-insight $(TARGET).elf &

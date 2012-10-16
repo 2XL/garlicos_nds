@@ -70,7 +70,34 @@ _gp_IntrMain:
 	@; se encarga de actualizar los tics, intercambiar procesos, etc.
 _gp_rsiVBL:
 	push {r4-r7, lr}
-
+	ldr r4, =_gd_tickCount		@; cargamos la direccion de la variable tickCount
+	ldr r5, [r4]				@; cargamos en r5 el valor de la variable tickCount
+	add r5, #1					@; incrementamos el contador de tics
+	str r5, [r4]				@; guardamos el valor en la variable
+	ldr r4, =_gd_nReady			@; cargamos la direccion de la variable numReady
+	ldr r5, [r4]				@; cargamos en r5 el valor de la variable numReady
+	ldr r4, =_gd_pidz			@; cargamos la direccion de la variable pidz
+	ldr r7, [r4]				@; cargamos en r7 el valor de la variable pidz
+	cmp r5, #0					@; comprobamos si existe algun proceso en la cola de Ready
+	beq .LrsiVBL_End			@; en caso de que numReady sea 0 saltamos al final de la RSI
+	cmp r7, #0					@; comprobamos si se trata del proceso de sistema operativo
+	beq .LrsiVBL_Save			@; en caso de que sea correcto saltamos a salvar proceso
+	mov r6, #0xffffff0			@; cargamos en r6 el valor de los 28 bits altos en 1
+	and r6, r7					@; hacemos un and para saber si pid=0
+	cmp r6, #0					
+	bne .LrsiVBL_Save			@; en caso de que no sea igual a 0 hay que salvar el contexto
+	mov r6, #0x0000000f			@; cargamos en r6 el valor de los 4 bits bajos en 1
+	and r6,r7					@; hacemos un and para saber si z=0
+	cmp r6,#0
+	bne .LrsiVBL_End			@; en caso de que no sea igual a 0 el proceso ha terminado su ejecuccion
+.LrsiVBL_Save:
+	ldr r4, =_gd_nReady			@; cargamos la direccion de la variable numReady
+	ldr r5, [r4]				@; cargamos en r5 el valor de la variable numReady
+	ldr r6, =_gd_pidz			@; cargamos la direccion de la variable pidz
+	ldr r7, [r4]				@; cargamos en r7 el valor de la variable pidz
+	bl _gp_salvarProc			@; llamamos a la funcion de salvar
+	bl _gp_restaurarProc		@; llamamos a la funcion de restaurar	
+.LrsiVBL_End:
 	pop {r4-r7, pc}
 
 
@@ -85,7 +112,67 @@ _gp_rsiVBL:
 	@; R5: nuevo número de procesos en READY (+1)
 _gp_salvarProc:
 	push {r8-r11, lr}
-
+	mov r9, #0x0000000f			@; cargamos en r9 el valor de los 4 bits bajos en 1
+	and r9,r7					@; hacemos un and para tener solo el valor de z
+	ldr r8, =_gd_qReady			@; cargamos en r8 la direccion del vector
+	strb r9, [r8, r5]			@; guardamos el zocalo en la ultima posicion
+	add r5, #1					@; incrementamos la variable numReady
+	str r5, [r4]				@; guardamos el valor en la variable
+	ldr r10, [sp, #0x3c]		@; guardamos el PC del proceso actual en r10
+	ldr r11,=_gd_psv			@; cargamos en r11 la direccion del psv
+	mov r8, #0x40				
+	mul  r9, r8 		
+	add r8, r9, #0x4			@; la direccion en la que tenemos que guardar es el (zocalox64) + 4 
+	str r10, [r11, r8] 			@; guardar el PC de la IRQ en el campo PC de _gd_psv[z]
+	mrs r10, CPSR				@; instruccion para copiar el cPRS en un registro
+	mov r8, #0x40
+	mul r9, r8
+	add r8, r9, #0xc			
+	str r10, [r11, r8]			@; guardar el CPSR en en el campo Status de _gd_psv[z]
+	mov r8, sp					@; guardamos el SP_irq en el registro r8
+	mrs r10, SPSR				@; SPSR contiene el estado anterior del proceso
+	cmp r10, #0x10				@; comparamos para saber si el estado anterior era de usuario
+	bne .LSysMod				@; si es diferente al codigo User pasamos
+	mov r10, #0x1f				@; en caso de ser igual lo cambiamos a modo system
+.LSysMod:
+	msr CPSR, r10				@; cambiamos a modo de ejecucion 
+	ldr r9, [r8, #0x28]			@; cargamos el registro r0 de la IRQ para guardarlos en la pila de procesos
+	push {r9}
+	ldr r9, [r8, #0x2c]			@; cargamos el registro r1
+	push {r9}
+	ldr r9, [r8, #0x30]			@; cargamos el registro r2
+	push {r9}
+	ldr r9, [r8, #0x34]			@; cargamos el registro r3
+	push {r9}
+	ldr r9, [r8, #0x14]			@; cargamos el registro r4
+	push {r9}
+	ldr r9, [r8, #0x18]			@; cargamos el registro r5
+	push {r9}
+	ldr r9, [r8, #0x1c]			@; cargamos el registro r6
+	push {r9}
+	ldr r9, [r8, #0x20]			@; cargamos el registro r7
+	push {r9}
+	ldr r9, [r8]				@; cargamos el registro r8
+	push {r9}
+	ldr r9, [r8, #0x4]			@; cargamos el registro r9
+	push {r9}
+	ldr r9, [r8, #0x8]			@; cargamos el registro r10
+	push {r9}
+	ldr r9, [r8, #0xc]			@; cargamos el registro r11
+	push {r9}
+	ldr r9, [r8, #0x38]			@; cargamos el registro r12
+	push {r9}
+	ldr r9, [r8, #0x10]			@; cargamos el registro r14
+	push {r9}
+	mov r8, #0x40				
+	mov r9, #0x0000000f			@; cargamos en r9 el valor de los 4 bits bajos en 1
+	and r9,r7					@; hacemos un and para tener solo el valor de z
+	mul  r9, r8 				
+	add r8, r9, #0x8			@; la direccion en la que tenemos que guardar es el (zocalox64) + 8
+	str sp, [r11, r8]			@; guardamos el sp del proceso en el campo sp del psv
+	mov r8, #0x12				@; guardamos en r8 el modo IRQ
+	msr CPSR, r8				@; cambiamos a modo irq
+	
 	pop {r8-r11, pc}
 
 
@@ -123,7 +210,7 @@ _gp_numProc:
 	@; R0: 0 si no hay problema, >0 si no se puede crear el proceso
 _gp_crearProc:
 	push {r1-r8, lr}
-
+	
 	pop {r1-r8, pc}
 
 
