@@ -12,6 +12,17 @@
 #include <garlic_font.h>	// definición gráfica de caracteres
 
 
+int bg2A_id, bg3A_id;
+int scale = 1<<8; // que en sistema de coma fija es 256 para el caso de 8 en factor de escala.
+ 
+char marcoFondo3[48][128];
+char marcoFondo2[48][128];
+ 
+//FUNCIONS AUXILIARS...
+
+void _gg_zocaloScroll ();
+void _gg_initMarco();
+
 /* Inicializaciones gráficas del sistema Garlic */
 //------------------------------------------------------------------------------
 void _gg_iniGraf()
