@@ -17,5 +17,5 @@ ASFLAGS	:=	-g0 $(ARCH) -mcpu=arm946e-s
 
 GARLIC_API.o : GARLIC_API.s
 	@echo "assembling GARLIC_API.s into GARLIC_API.o"
-	@arm-eabi-as $(ASFLAGS) GARLIC_API.s -o GARLIC_API.o
+	@arm-none-eabi-as $(ASFLAGS) GARLIC_API.s -o GARLIC_API.o
 

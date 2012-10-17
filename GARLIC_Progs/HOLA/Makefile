@@ -42,15 +42,15 @@ LDFLAGS	:=	--oformat elf32-littlearm \
 
 $(TARGET).elf : $(TARGET).o
 	@echo "linking $(TARGET).o into $(TARGET).elf"
-	@arm-eabi-ld $(LDFLAGS) $(TARGET).o $(GARLICAPI)/GARLIC_API.o -o $(TARGET).elf
+	@arm-none-eabi-ld $(LDFLAGS) $(TARGET).o $(GARLICAPI)/GARLIC_API.o -o $(TARGET).elf
 
 $(TARGET).o : $(TARGET).s
 	@echo "assembling $(TARGET).s into $(TARGET).o"
-	@arm-eabi-as $(ASFLAGS) $(TARGET).s -o $(TARGET).o
+	@arm-none-eabi-as $(ASFLAGS) $(TARGET).s -o $(TARGET).o
 
 $(TARGET).s : $(TARGET).c
 	@echo "compiling $(TARGET).c into $(TARGET).s"
-	@arm-eabi-gcc $(CFLAGS) -S $(TARGET).c -I$(GARLICAPI) -o $(TARGET).s
+	@arm-none-eabi-gcc $(CFLAGS) -S $(TARGET).c -I$(GARLICAPI) -o $(TARGET).s
 
 #---------------------------------------------------------------------------------
 # clean commands
