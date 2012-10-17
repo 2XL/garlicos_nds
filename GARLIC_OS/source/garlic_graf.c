@@ -72,7 +72,7 @@ bgUpdate();
 
 /* dibujar nº zocalos en el marco de dondo 3, como rango de 1 hasta 4,
 	numZocalos Fila local (entre 1 i 2) (offset implica numFilaZocalo) 
-	pasar el matriz por parametro...									*/
+	pasar la matriz por parametro...									*/
 void _gg_initMarco(int numZocalos, char marco[48][128])	
 { 
 	int indexActual = 0;	// contador del dibujo zocalo...
@@ -144,42 +144,39 @@ void _gg_escribir(char *mensaje, int zocalo)
 		int aux = _gd_psv[zocalo].pControl;
 
 // Posició Especifica
-	int pFila = aux >> 16;	// mentres sigui superior a x caldra fer lo de desplaçar 
-	int pnChars = (0x0000FFFF & aux);
+	int pFila = aux >> 16;				// mentres sigui superior a x caldra fer lo de desplaçar 
+	int pnChars = (0x0000FFFF & aux);	
 
 // Origen Cordenades		
 		// per construir l'offset?
 	int x =  (zocalo % 2) * 64;	// fila inicial zocalo
 	int y =  (zocalo / 2) * 24;	// columna inicial zocalo
 	
-// Limits Finals	
-	int finY = y + 24;	// implica desplaçar cap amunt
+// Limits Finals eix Vertical(numFila)	
+	int finY = y + 24;		// implica desplaçar cap amunt
 
 // Index Actual	
 		int indexX = x ;
 		int indexY = y + pFila;
 	
-	int i = 0; // index del missatge; // index del missatge per passarlo al pChar xD
-	int j = pnChars; // index pChar; // nomero de caracters carregats al buffer per imprimir
-	// carregar pChar	
+	int i = 0;		 // index del missatge; 	// index del missatge per passarlo al pChar xD
+	int j = pnChars; // index pChar; 			// número de caracters carregats al buffer per imprimir
+	// carregar pChar		
 	
-//	_gg_addChars2msg(int pnChars, char *chars)
-	
-	
-	while (mensaje[i]!= '\0')	// sembla que l'estigui carregant
+	while (mensaje[i]!= '\0')		// sembla que l'estigui carregant
 		{
-			if(j<32)	// si el buffer pChars no esta ple continuem omplint-ho
+			if(j<32)				// si el buffer pChars no esta ple continuem omplint-ho
 				{
 				switch (mensaje[i])
 					{
-					case '\n':	// afegir fins que provoqui un salt de linea
+					case '\n':		// afegir fins que provoqui un salt de linea
 						while(j<32)
 							{
 							_gd_psv[zocalo].pChars[j] = ' ';	// caso particular salt de linea
 							j++;
 							}
 					break;
-					case '\t': // afegir fins que trobi el proxim multipla a 4 afegir abans de incrementar
+					case '\t':		// afegir fins que trobi el proxim multiple a 4, afegir abans de incrementar
 						do
 							{
 							_gd_psv[zocalo].pChars[j] = ' ';	// caso particular salto tabulador == space.dim.mod: 4
@@ -193,34 +190,33 @@ void _gg_escribir(char *mensaje, int zocalo)
 					break;
 					}
 				}
-				i++;	// incrementar l'index del msg		
+				i++;		// incrementar l'index del msg		
 				
-			if(j == 32) // en el cas de que estigui plé caldrà buidar-ho
+			if(j == 32) 	// en el cas de que estigui plé caldrà buidar-ho
 				{
 				_gp_WaitForVBlank();
-				int aux = 0; // comptador del char
+				int aux = 0; 			// comptador del char
 				for(aux = 0; aux < j; aux++) 
 					marcoFondo2[indexY][indexX+2*aux] = _gd_psv[zocalo].pChars[aux]-32;	// -32 perque les tiles estan desfaçades respecte ASCI
 					dmaCopy(marcoFondo2, bgGetMapPtr(bg2A_id), sizeof(marcoFondo2));
 					bgUpdate();
 				j = 0;
 				
-				if(indexY == finY-1)	// implica que ha arribat al maxim i no puc incrementar més d'offset ok!
-					_gg_zocaloScroll (x,y);	// només aplicable aquest marc en particular // passo l'origen de coordenades per lo Zocalo corresponent
+				if(indexY == finY-1)			// implica que ha arribat al maxim i no puc incrementar més d'offset ok!
+					_gg_zocaloScroll (x,y);		// només aplicable aquest marc en particular // passo l'origen de coordenades per lo Zocalo corresponent
 				else
 					indexY++;
 				}		
 		}
 		
 		// actualitzar el index de pControl ! fin de fase!!!
-	
+		
 		pnChars = j;
 		pFila = (indexY - y) << 16;
 		_gd_psv[zocalo].pControl = (pFila|pnChars);
 }
 
 /* realizar un Scroll i borrar la ultima linea */
-
 void _gg_zocaloScroll (int OriX, int OriY)
 {
 int fX = OriX + 64;
