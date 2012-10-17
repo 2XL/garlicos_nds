@@ -24,6 +24,9 @@
 void _gm_relocatar(unsigned int *destino, char *file, unsigned int pAddr)
 {
 	
+	//file[(int)destino] = (int)0x02100000 + file[(int)destino] - pAddr ;
+	*(destino) = (int)0x02100000 + *(destino) - pAddr ;
+	
 }
 
 /* _gm_cargarPrograma: cargar el programa "(keyName).elf" en una zona de memoria
@@ -88,9 +91,6 @@ intFunc _gm_cargarPrograma(char *keyName) {
 			
 			printf("> cabeceras de programa :   %d\n", phnum);
 			
-			result = entry;										// La función debe devolver esta dirección de arranque
-			
-			
 			
 			
 			// Declaración variables de secciones
@@ -100,17 +100,14 @@ intFunc _gm_cargarPrograma(char *keyName) {
 			//Declaración variables de relocalizaciones
 			int contador_r, pos_r, pos_r_ini;
 			int r_offset;
+			unsigned int* destino;
 			
 			// Variables segmentos
 			int contador;
+			int mem_offset = 0;					// Para determinar dónde cargar segmentos si hay más de 1
 			int pos = phoff;
 			int pos_ini = pos;
 			int p_offset, p_paddr, p_filesz, p_memsz, p_flags;
-			
-			
-			
-			// CARGAR EL CONTENIDO DEL SEGMENTO EN DIRECCIÓN DESTINO???
-			// ???
 			
 			
 			
@@ -132,6 +129,23 @@ intFunc _gm_cargarPrograma(char *keyName) {
 					//pos=pos+4;	// nos saltamos p_align
 					
 					//printf("%d %d %d %d %d\n", p_offset, p_paddr, p_filesz, p_memsz, p_flags);
+					
+					
+					
+					// CARGAR EL CONTENIDO DEL SEGMENTO EN DIRECCIÓN DESTINO
+					// 
+					//dmaCopy((void*)0x02100000, (const void*)puntero[entry], (24*1024));
+					//
+					//DC_FlushRange((const void*)p_offset, p_memsz);
+					
+					
+					//dmaCopy((const void*)p_offset, (void*)0x02100000 + mem_offset, p_memsz);
+					dmaCopy((const void*)&puntero[p_offset], 0x02100000 + mem_offset, p_memsz);
+					mem_offset = mem_offset + p_memsz;
+					//
+					//
+					
+					
 					
 					printf("> segmento num. %d copiado:\n", contador);
 					printf("   despl. en fichero :  %d\n", p_offset);
@@ -176,12 +190,15 @@ intFunc _gm_cargarPrograma(char *keyName) {
 									
 									
 									
-									// DIRECCIÓN DESTINO??
-									// ???
+									destino = (unsigned int*)((int)0x02100000 + r_offset - p_paddr);
+									//_gm_relocatar((unsigned int*)r_offset, puntero, p_paddr);	// llamar función relocalizadora
 									
 									
-									_gm_relocatar((unsigned int*)r_offset, puntero, p_paddr);	// llamar función relocalizadora
+									//_gm_relocatar(destino, puntero, p_paddr);	// llamar función relocalizadora
+									_gm_relocatar(destino, puntero, p_paddr);	// llamar función relocalizadora
 									
+									
+									//puntero[(int)destino] = (int)0x02100000 + puntero[(int)destino] - p_paddr ;
 									
 								}	//endif r
 								
@@ -197,7 +214,7 @@ intFunc _gm_cargarPrograma(char *keyName) {
 			
 			
 			free(puntero);
-			result = entry;										// La función debe devolver esta dirección de arranque
+			result = (int)0x02100000 + entry - p_paddr;									// La función debe devolver esta dirección de arranque
 			
 		}
 		
