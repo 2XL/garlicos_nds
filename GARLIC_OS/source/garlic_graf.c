@@ -29,6 +29,8 @@ void _gg_iniGraf()
 //------------------------------------------------------------------------------
 {
 	
+	
+	
 	// inicializar el procesador gráfico ?§principal en modo 5:
 		videoSetMode(MODE_5_2D |  DISPLAY_BG3_ACTIVE |  DISPLAY_BG2_ACTIVE); //	OK
 
@@ -47,7 +49,7 @@ void _gg_iniGraf()
 		dmaCopy(garlic_fontPal, BG_PALETTE, garlic_fontPalLen);						// los palettes :> colores
 
 	// generar los marcos de las ventanas de texto e??n el fondo 3,
-		_gg_initMarco(2, marcoFondo3); // max 4..., mem reserv = max 4 marco... // quedaria bé pasar per parametre lo punter del marco pero aqui suposem que sempre sera el 3.
+		_gg_initMarco(4, marcoFondo3); // max 4..., mem reserv = max 4 marco... // quedaria bé pasar per parametre lo punter del marco pero aqui suposem que sempre sera el 3.
 		dmaCopy(marcoFondo3, bgGetMapPtr(bg3A_id), sizeof(marcoFondo3));
 		dmaCopy(marcoFondo2, bgGetMapPtr(bg2A_id), sizeof(marcoFondo2));
 	
@@ -134,10 +136,6 @@ void _gg_escribir(char *mensaje, int zocalo)
 //------------------------------------------------------------------------------
 {
 
-void _gg_escribir(char *mensaje, int zocalo)
-//------------------------------------------------------------------------------
-{
-
 //	control de escritura en ventana del zócalo
 							//		16 bits altos: número de línea (0-23)
 							//		16 bits bajos: caracteres pendientes (0-32)
@@ -170,21 +168,21 @@ void _gg_escribir(char *mensaje, int zocalo)
 	
 	while (mensaje[i]!= '\0')	// sembla que l'estigui carregant
 		{
-			if(j<32)
+			if(j<32)	// si el buffer pChars no esta ple continuem omplint-ho
 				{
 				switch (mensaje[i])
 					{
 					case '\n':	// afegir fins que provoqui un salt de linea
 						while(j<32)
 							{
-							_gd_psv[zocalo].pChars[j] = ' ';
+							_gd_psv[zocalo].pChars[j] = ' ';	// caso particular salt de linea
 							j++;
 							}
 					break;
 					case '\t': // afegir fins que trobi el proxim multipla a 4 afegir abans de incrementar
 						do
 							{
-							_gd_psv[zocalo].pChars[j] = ' ';
+							_gd_psv[zocalo].pChars[j] = ' ';	// caso particular salto tabulador == space.dim.mod: 4
 							j++;
 							}
 						while(j%4!=0);
@@ -197,13 +195,12 @@ void _gg_escribir(char *mensaje, int zocalo)
 				}
 				i++;	// incrementar l'index del msg		
 				
-			if(j == 32) //
+			if(j == 32) // en el cas de que estigui plé caldrà buidar-ho
 				{
 				_gp_WaitForVBlank();
-				
 				int aux = 0; // comptador del char
 				for(aux = 0; aux < j; aux++) 
-					marcoFondo2[indexY][indexX+2*aux] = _gd_psv[zocalo].pChars[aux]-32;
+					marcoFondo2[indexY][indexX+2*aux] = _gd_psv[zocalo].pChars[aux]-32;	// -32 perque les tiles estan desfaçades respecte ASCI
 					dmaCopy(marcoFondo2, bgGetMapPtr(bg2A_id), sizeof(marcoFondo2));
 					bgUpdate();
 				j = 0;
@@ -222,6 +219,23 @@ void _gg_escribir(char *mensaje, int zocalo)
 		_gd_psv[zocalo].pControl = (pFila|pnChars);
 }
 
+/* realizar un Scroll i borrar la ultima linea */
 
+void _gg_zocaloScroll (int OriX, int OriY)
+{
+int fX = OriX + 64;
+int fy = OriY + 24;
+int i, j;
+
+for(j = OriY; j < fy; j+=1)
+	for(i = OriX; i < fX; i+=2)
+		marcoFondo2[j][i] = marcoFondo2[j+1][i];
+
+// deixar la ultima linea lliure i esborrar el contingut anterior
+	for(i = OriX; i < fX; i+=2)
+		marcoFondo2[fy-1][i] = 32-32;
 }
+
+
+
 
