@@ -54,10 +54,10 @@ void _gg_iniGraf()
 		dmaCopy(marcoFondo2, bgGetMapPtr(bg2A_id), sizeof(marcoFondo2));
 	
 	// escalar los fondos 2 y 3 para que quepan en la pantalla superior de la NDS.
-		bgSetScale(bg3A_id, (scale)*2,(scale)*2); // massa zoooom perjudica la vista potser que m'hagi sortit del rang
-		bgSetScale(bg2A_id, (scale)*2,(scale)*2); 
+	//	bgSetScale(bg3A_id, (scale)*2,(scale)*2); // massa zoooom perjudica la vista potser que m'hagi sortit del rang
+	//	bgSetScale(bg2A_id, (scale)*2,(scale)*2); 
 
-	//	bgSetScroll(bg2A_id, 256 ,192);		// desplaçar el fons de la pantalla 2 a baix-dret
+		bgSetScroll(bg2A_id, 256 ,192);		// desplaçar el fons de la pantalla 2 a baix-dret
 
 
 // scale eix x e eix y
@@ -194,6 +194,12 @@ void _gg_escribir(char *mensaje, int zocalo)
 				
 			if(j == 32) 	// en el cas de que estigui plé caldrà buidar-ho
 				{
+				
+				if(indexY == finY-1)			// implica que ha arribat al maxim i no puc incrementar més d'offset ok!
+					_gg_zocaloScroll (x,y);		// només aplicable aquest marc en particular // passo l'origen de coordenades per lo Zocalo corresponent
+				else
+					indexY++;
+					
 				_gp_WaitForVBlank();
 				int aux = 0; 			// comptador del char
 				for(aux = 0; aux < j; aux++) 
@@ -201,12 +207,12 @@ void _gg_escribir(char *mensaje, int zocalo)
 					dmaCopy(marcoFondo2, bgGetMapPtr(bg2A_id), sizeof(marcoFondo2));
 					bgUpdate();
 				j = 0;
-				
+			/*	
 				if(indexY == finY-1)			// implica que ha arribat al maxim i no puc incrementar més d'offset ok!
 					_gg_zocaloScroll (x,y);		// només aplicable aquest marc en particular // passo l'origen de coordenades per lo Zocalo corresponent
 				else
 					indexY++;
-				}		
+			*/	}		
 		}
 		
 		// actualitzar el index de pControl ! fin de fase!!!
