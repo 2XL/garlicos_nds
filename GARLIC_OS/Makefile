@@ -48,7 +48,7 @@ CFLAGS	:=	-Wall -g -O2 \
 CFLAGS	+=	$(INCLUDE) -DARM9
 
 ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-specs=ds_arm9.specs $(ARCH) -mno-fpu
+LDFLAGS	=	-specs=ds_arm9.specs $(ARCH) 
 
 #-------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project (order is important)
