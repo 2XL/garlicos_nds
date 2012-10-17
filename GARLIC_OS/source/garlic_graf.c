@@ -28,7 +28,6 @@ void _gg_initMarco();
 void _gg_iniGraf()
 //------------------------------------------------------------------------------
 {
-	_gg_initMarco();
 	
 	// inicializar el procesador gráfico ?§principal en modo 5:
 		videoSetMode(MODE_5_2D |  DISPLAY_BG3_ACTIVE |  DISPLAY_BG2_ACTIVE); //	OK
@@ -48,7 +47,7 @@ void _gg_iniGraf()
 		dmaCopy(garlic_fontPal, BG_PALETTE, garlic_fontPalLen);						// los palettes :> colores
 
 	// generar los marcos de las ventanas de texto e??n el fondo 3,
-		_gg_initMarco(4); // max 4..., mem reserv = max 4 marco... // quedaria bé pasar per parametre lo punter del marco pero aqui suposem que sempre sera el 3.
+		_gg_initMarco(2, marcoFondo3); // max 4..., mem reserv = max 4 marco... // quedaria bé pasar per parametre lo punter del marco pero aqui suposem que sempre sera el 3.
 		dmaCopy(marcoFondo3, bgGetMapPtr(bg3A_id), sizeof(marcoFondo3));
 		dmaCopy(marcoFondo2, bgGetMapPtr(bg2A_id), sizeof(marcoFondo2));
 	
@@ -66,8 +65,9 @@ bgUpdate();
 
 
 /* dibujar nº zocalos en el marco de dondo 3, como rango de 1 hasta 4,
-	numZocalos Fila local (entre 1 i 2) (offset implica numFilaZocalo) */
-void _gg_initMarco(int numZocalos)
+	numZocalos Fila local (entre 1 i 2) (offset implica numFilaZocalo) 
+	pasar el matriz por parametro...									*/
+void _gg_initMarco(int numZocalos, char marco[48][128])	
 { 
 	int indexActual = 0;	// contador del dibujo zocalo...
 
@@ -93,16 +93,16 @@ void _gg_initMarco(int numZocalos)
 			}
 
 	// Actualitzar comptadors
-		marcoFondo3[indexY][indexX] = 103;
-		marcoFondo3[findexY][indexX] = 100;
-		marcoFondo3[indexY][findexX] = 102;
-		marcoFondo3[findexY][findexX] = 101;
+		marco[indexY][indexX] = 103;
+		marco[findexY][indexX] = 100;
+		marco[indexY][findexX] = 102;
+		marco[findexY][findexX] = 101;
 		
 	// inicialitzar fila corresponent
 		for( indexX = indexX+2; indexX<findexX; indexX =indexX+2)	// per no tocar l'ultim ni el primer "tile"
 			{
-			marcoFondo3[indexY][indexX] = 99;
-			marcoFondo3[findexY][indexX] = 97;
+			marco[indexY][indexX] = 99;
+			marco[findexY][indexX] = 97;
 			}
 		
 		indexX = indexX - 62; // restablir l'offset	
@@ -110,8 +110,8 @@ void _gg_initMarco(int numZocalos)
 	// inicialitzar columna corresponent
 		for ( indexY = indexY+1; indexY<findexY; indexY=indexY +1) // per no tocar l'ultim ni el primer "tile"
 			{
-			marcoFondo3[indexY][indexX] = 96;
-			marcoFondo3[indexY][findexX] = 98;
+			marco[indexY][indexX] = 96;
+			marco[indexY][findexX] = 98;
 			}
 
 		indexActual++;
