@@ -68,7 +68,8 @@ int hola() {
 	GARLIC_print("-- Programa HOLA (Garlic 0.5) --");
 							// cálculo del número aleatorio de iteraciones
 	GARLIC_divmod((unsigned) GARLIC_random(), 100, &i, &iter);
-	iter++;					// asegurar que hay al menos una iteración
+	iter++;
+	//iter = 	23;				// asegurar que hay al menos una iteración
 	for (i = 0; i < iter; i++)
 	{
 		GARLIC_num2str(num, 3, i);
