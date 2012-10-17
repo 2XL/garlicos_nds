@@ -125,16 +125,20 @@ _gp_salvarProc:
 	add r8, r9, #0x4			@; la direccion en la que tenemos que guardar es el (zocalox64) + 4 
 	str r10, [r11, r8] 			@; guardar el PC de la IRQ en el campo PC de _gd_psv[z]
 	mrs r10, CPSR				@; instruccion para copiar el cPRS en un registro
+	and r10, #0x1f				@; solo nos interesa el modo no los otros 27 bits
 	mov r8, #0x40
 	mul r9, r8
 	add r8, r9, #0xc			
 	str r10, [r11, r8]			@; guardar el CPSR en en el campo Status de _gd_psv[z]
 	mov r8, sp					@; guardamos el SP_irq en el registro r8
 	mrs r10, SPSR				@; SPSR contiene el estado anterior del proceso
-	cmp r10, #0x10				@; comparamos para saber si el estado anterior era de usuario
+	and r9, r10, #0x1f			@; solo necesitamos los 5 ultimos bytes
+	cmp r9, #0x10				@; comparamos para saber si el estado anterior era de usuario
 	bne .LSysMod				@; si es diferente al codigo User pasamos
-	mov r10, #0x1f				@; en caso de ser igual lo cambiamos a modo system
+	mov r9, #0x1f				@; en caso de ser igual lo cambiamos a modo system
 .LSysMod:
+	mrs r10, CPSR				
+	orr r10, r9					@; cambiamos los ultimos 5 bytes
 	msr CPSR, r10				@; cambiamos a modo de ejecucion 
 	ldr r9, [r8, #0x28]			@; cargamos el registro r0 de la IRQ para guardarlos en la pila de procesos
 	push {r9}
@@ -171,7 +175,9 @@ _gp_salvarProc:
 	add r8, r9, #0x8			@; la direccion en la que tenemos que guardar es el (zocalox64) + 8
 	str sp, [r11, r8]			@; guardamos el sp del proceso en el campo sp del psv
 	mov r8, #0x12				@; guardamos en r8 el modo IRQ
-	msr CPSR, r8				@; cambiamos a modo irq
+	and r10, #0xffffffe0
+	orr r10, r8
+	msr CPSR, r10				@; cambiamos a modo irq
 	
 	pop {r8-r11, pc}
 
@@ -183,7 +189,90 @@ _gp_salvarProc:
 	@; R6: dirección _gd_pidz
 _gp_restaurarProc:
 	push {r8-r11, lr}
-	
+	sub r5, #1					@; decrementamos el contador de procesos de READY
+	str r5, [r4]				@; guardamos el nready en su variable
+	ldr r8, =_gd_qReady			@; guardamos la direccion de la cola de ready
+	ldrb r9, [r8]				@; guardamos en r9 el primer zocalo de la cola de ready
+	mov r10, #0
+.Lfor:
+	cmp r10, r5					@; hacemos un for para desplazar la cola de ready
+	bge .LfinFor
+	add r10, #1			
+	ldrb r11, [r8, r10]			@; guardamos el zocalo la siguente direccion en r11
+	sub r10, #1
+	strb r11, [r8, r10]			@; guardamos en la anterior direccion el zocalo
+	add r10, #1
+	b .Lfor
+.LfinFor:
+	mov r11, #0	
+	strb r11, [r8, r5]			@; guardamos un 0 en la ultima posicion 
+	ldr r8, =_gd_psv
+	mov r11, #0x40
+	mul r11, r9
+	str r10, [r8, r11]			@; obtenemos el campo pid del proceso z del psv
+	lsl r10, #0x4
+	orr r10, r9					@; construim el PIDz
+	str r10, [r6]
+	add r11, #0x4
+	ldr r10, [r8, r11]			@; guardamos en r10 el campo PC 
+	add r10, #0x4
+	mov r8, sp
+	mov r11, #0x3c
+	str r10, [r8, r11]			@; guardamos en PC en SP_irq + 60
+	mov r11, #0x40
+	mul r11, r9
+	add r11, #0xc
+	ldr r8, =_gd_psv
+	ldr r10, [r8, r11]			@; guardamos en r10 el valor del campo Status
+	mrs r11, CPSR
+	and r11, #0xffffffe0
+	orr r11, r10
+	msr SPSR, r11
+	mov r8, sp
+	@;and r10, r11, #0x1f			@; solo necesitamos los 5 ultimos bytes
+	cmp r10, #0x10				@; comparamos para saber si el estado anterior era de usuario
+	bne .LSysMod2				@; si es diferente al codigo User pasamos
+	mov r10, #0x1f				@; en caso de ser igual lo cambiamos a modo system
+.LSysMod2:
+	msr CPSR, r10				@; cambiamos a modo de ejecucion 
+	ldr r10, =_gd_psv			
+	mov r11, #0x40
+	mul r11, r9
+	add r11, #0x8
+	ldr r13, [r10, r11]
+	pop {r11}
+	mov r14, r11				@; guardamos el registro r14
+	pop {r11}
+	str r11, [r8, #0x38]		@; guardamos el registro r12
+	pop {r11}
+	str r11, [r8, #0xc]			@; guardamos el registro r11
+	pop {r11}
+	str r11, [r8, #0x8]			@; guardamos el registro r10
+	pop {r11}
+	str r11, [r8, #0x4]			@; guardamos el registro r9
+	pop {r11}
+	str r11, [r8, #0x0]			@; guardamos el registro r8
+	pop {r11}
+	str r11, [r8, #0x20]		@; guardamos el registro r7
+	pop {r11}
+	str r11, [r8, #0x1c]		@; guardamos el registro r6
+	pop {r11}
+	str r11, [r8, #0x18]		@; guardamos el registro r5
+	pop {r11}
+	str r11, [r8, #0x14]		@; guardamos el registro r4
+	pop {r11}
+	str r11, [r8, #0x34]		@; guardamos el registro r3
+	pop {r11}
+	str r11, [r8, #0x30]		@; guardamos el registro r2
+	pop {r11}
+	str r11, [r8, #0x2c]		@; guardamos el registro r1
+	pop {r11}
+	str r11, [r8, #0x28]		@; guardamos el registro r0
+	mov r11, #0x12
+	mrs r10, CPSR
+	and r10, #0xffffffe0
+	orr r10, r11
+	msr CPSR, r10
 	pop {r8-r11, pc}
 
 
@@ -210,7 +299,75 @@ _gp_numProc:
 	@; R0: 0 si no hay problema, >0 si no se puede crear el proceso
 _gp_crearProc:
 	push {r1-r8, lr}
-	
+	cmp r1, #0				@; en caso de que z sea 0 rechazamos la llamada
+	beq	.LcrearEnd
+	ldr r8, =_gd_psv		@; cargamos la direccion del psv en r2
+	mov r3, #0x40				
+	mul r7, r1, r3	 		@; multiplicamos el zocalo por 64
+	ldr r4, [r8, r7]		@; r4= PID de z
+	cmp r4, #0				@; en caso de que pid sea diferente a 0 saltamos al final
+	bne .LcrearEnd
+	ldr r5,  =_gd_pidCount	@; cargamos la direccion de pidCount en r5
+	ldr r6, [r5]
+	add r6, #1				@; incrementamos pidCount
+	str r6, [r5]
+	str r6, [r8, r7]		@; PId de z= pidCount
+	add r3, r7, #0x4		@; direccion del PC del psv
+	str r0, [r8, r3]		@; guardamos la funcion en el campo PC en el psv de z
+	add r3, r7, #0x10		@; direccion del keyName del psv
+	str r2, [r8,r3]			@; guardamos el nombre de la funcion en el campo keyName de psv
+	mov r3, #0x200			
+	mul r3, r1				@; calculamos el offset del vector de pilas
+	sub r3, #0x1			@; como se trata del vector de pilas de procesos tenemos que apilar desdel final de su offset
+	ldr r5, =_gd_stacks		@; guardamos la direccion del vector de pilas
+	mov r6, #0
+	str r6, [r5, r3]		@; guardamos 0 en el registro 0 del vector de pilas
+	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
+	str r6, [r5, r3]		@; guardamos 0 en el registro 1 del vector de pilas
+	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
+	str r6, [r5, r3]		@; guardamos 0 en el registro 2 del vector de pilas
+	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
+	str r6, [r5, r3]		@; guardamos 0 en el registro 3 del vector de pilas
+	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
+	str r6, [r5, r3]		@; guardamos 0 en el registro 4 del vector de pilas
+	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
+	str r6, [r5, r3]		@; guardamos 0 en el registro 5 del vector de pilas
+	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
+	str r6, [r5, r3]		@; guardamos 0 en el registro 6 del vector de pilas
+	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
+	str r6, [r5, r3]		@; guardamos 0 en el registro 7 del vector de pilas
+	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
+	str r6, [r5, r3]		@; guardamos 0 en el registro 8 del vector de pilas
+	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
+	str r6, [r5, r3]		@; guardamos 0 en el registro 9 del vector de pilas
+	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
+	str r6, [r5, r3]		@; guardamos 0 en el registro 10 del vector de pilas
+	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
+	str r6, [r5, r3]		@; guardamos 0 en el registro 11 del vector de pilas
+	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
+	str r6, [r5, r3]		@; guardamos 0 en el registro 12 del vector de pilas
+	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
+	ldr r6, _gp_terminarProc 	@; cargamos la direccion de terminarproc
+	str r6, [r5, r3]		@; guardamos la direccion de terminarproc en el registro 14 del vector de pilas
+	add r7, #0x8			@; en el registro 7 teniamos guardada la direccion del psv de z solo hay que sumar 8 para escribir en SP
+	add r5, r3
+	str r5, [r8, r7]		@; guardamos el registro 13 en el campo SP del psv
+	mov r6, #0x10			@; codigo del modo usuario
+	add r7, #0x4		
+	str r6, [r8, r7]		@; guardamos el codigo en el campo status del psv
+	mov r6, #0		
+	add r7, #0x8
+	str r6, [r8, r7]		@; inicializamos numticks	
+	add r7, #0x8
+	str r6, [r8, r7]		@; inicializamos pcontrol
+	ldr r7, =_gd_nReady		@; guardamos la direccion de la variable numReady
+	ldr r8, =_gd_qReady		@; guardamos la direccion de la cola de ready
+	ldr r6, [r7]			@; cargamos el valor de la variable numReady
+	strb r1, [r8, r6]		@; guardamos el zocalo en la ultima posicion de la cola de ready
+	add r6, #1				@; incrementamos la variable numReady
+	str r6, [r7]
+	mov r0, #0
+.LcrearEnd:
 	pop {r1-r8, pc}
 
 
