@@ -64,6 +64,10 @@ bgUpdate();
 }
 
 
+
+
+
+
 /* dibujar nº zocalos en el marco de dondo 3, como rango de 1 hasta 4,
 	numZocalos Fila local (entre 1 i 2) (offset implica numFilaZocalo) 
 	pasar el matriz por parametro...									*/
@@ -123,24 +127,101 @@ void _gg_initMarco(int numZocalos, char marco[48][128])
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
 /* Escribir un mensaje de texto, como vector de caracteres terminado por cero,
 	en la ventana correspondiente al zócalo indicado por parámetro */
 //------------------------------------------------------------------------------
 void _gg_escribir(char *mensaje, int zocalo)
 //------------------------------------------------------------------------------
 {
+
+void _gg_escribir(char *mensaje, int zocalo)
+//------------------------------------------------------------------------------
+{
+
+//	control de escritura en ventana del zócalo
+							//		16 bits altos: número de línea (0-23)
+							//		16 bits bajos: caracteres pendientes (0-32)
+// mascara para bits altos : 23 --> 0xFFFF0000 ---> per determinar fila actual
+//				bits bajos : 32 --> 0x0000FFFF ---> per determinar numero de pChar actual
+		int aux = _gd_psv[zocalo].pControl;
+
+// Posició Especifica
+	int pFila = aux >> 16;	// mentres sigui superior a x caldra fer lo de desplaçar 
+	int pnChars = (0x0000FFFF & aux);
+
+// Origen Cordenades		
+		// per construir l'offset?
+	int x =  (zocalo % 2) * 64;	// fila inicial zocalo
+	int y =  (zocalo / 2) * 24;	// columna inicial zocalo
+	
+// Limits Finals	
+	int finY = y + 24;	// implica desplaçar cap amunt
+
+// Index Actual	
+		int indexX = x ;
+		int indexY = y + pFila;
+	
+	int i = 0; // index del missatge; // index del missatge per passarlo al pChar xD
+	int j = pnChars; // index pChar; // nomero de caracters carregats al buffer per imprimir
+	// carregar pChar	
+	
+//	_gg_addChars2msg(int pnChars, char *chars)
+	
+	
+	while (mensaje[i]!= '\0')	// sembla que l'estigui carregant
+		{
+			if(j<32)
+				{
+				switch (mensaje[i])
+					{
+					case '\n':	// afegir fins que provoqui un salt de linea
+						while(j<32)
+							{
+							_gd_psv[zocalo].pChars[j] = ' ';
+							j++;
+							}
+					break;
+					case '\t': // afegir fins que trobi el proxim multipla a 4 afegir abans de incrementar
+						do
+							{
+							_gd_psv[zocalo].pChars[j] = ' ';
+							j++;
+							}
+						while(j%4!=0);
+					break;
+					default:
+						_gd_psv[zocalo].pChars[j] = mensaje[i];
+						j++;
+					break;
+					}
+				}
+				i++;	// incrementar l'index del msg		
+				
+			if(j == 32) //
+				{
+				_gp_WaitForVBlank();
+				
+				int aux = 0; // comptador del char
+				for(aux = 0; aux < j; aux++) 
+					marcoFondo2[indexY][indexX+2*aux] = _gd_psv[zocalo].pChars[aux]-32;
+					dmaCopy(marcoFondo2, bgGetMapPtr(bg2A_id), sizeof(marcoFondo2));
+					bgUpdate();
+				j = 0;
+				
+				if(indexY == finY-1)	// implica que ha arribat al maxim i no puc incrementar més d'offset ok!
+					_gg_zocaloScroll (x,y);	// només aplicable aquest marc en particular // passo l'origen de coordenades per lo Zocalo corresponent
+				else
+					indexY++;
+				}		
+		}
+		
+		// actualitzar el index de pControl ! fin de fase!!!
+	
+		pnChars = j;
+		pFila = (indexY - y) << 16;
+		_gd_psv[zocalo].pControl = (pFila|pnChars);
+}
+
 
 }
 
