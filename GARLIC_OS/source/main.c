@@ -1,18 +1,17 @@
 /*------------------------------------------------------------------------------
 
-	"main.c" : fase 1 / programador G
+	"main.c" : fase 1 / programador M
 
-	Programa de prueba para la gestión del sistema gráfico de GARLIC, donde
-	cada proceso dispone de una zona de 24 líneas por 32 caracteres para
-	escribir mensajes.
+	Programa de prueba de carga de un fichero ejecutable en formato ELF,
+	efectuando la necesaria relocatación y ejecutando su código.
 
 ------------------------------------------------------------------------------*/
 #include <nds.h>
+#include <filesystem.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <garlic_system.h>	// definición de funciones y variables de sistema
-
-#include <GARLIC_API.h>		// inclusión del API para simular un proceso
-int hola();					// función que simula la ejecución del proceso
 
 extern int * punixTime;		// puntero a zona de memoria con el tiempo real
 
@@ -22,7 +21,7 @@ extern int * punixTime;		// puntero a zona de memoria con el tiempo real
 void inicializarSistema() {
 //------------------------------------------------------------------------------
 	
-	_gg_iniGraf();		// inicializar gráficos
+	consoleDemoInit();		// inicializar console sólo para realizar pruebas
 	
 	_gd_seed = *punixTime;	// inicializar semilla para números aleatorios con
 	_gd_seed <<= 16;		// el valor de tiempo real UNIX, desplazado 16 bits
@@ -30,26 +29,43 @@ void inicializarSistema() {
 	irqInitHandler(_gp_IntrMain);	// inicializar IRQs
 	irqSet(IRQ_VBLANK, _gp_rsiVBL);
 	irqEnable(IRQ_VBLANK);
+	
+	if (!nitroFSInit()) {
+		printf("ERROR: ¡no se puede utilizar Nitro File System!");
+		exit(0);
+	}
 }
 
 
 //------------------------------------------------------------------------------
 int main(int argc, char **argv) {
 //------------------------------------------------------------------------------
-
+	intFunc start;
 	inicializarSistema();
 	
-	_gg_escribir("********************************", 0);
-	_gg_escribir("*                              *", 0);
-	_gg_escribir("* Sistema Operativo GARLIC 0.5 *", 0);
-	_gg_escribir("*                              *", 0);
-	_gg_escribir("********************************", 0);
-	_gg_escribir("*** Inicio fase 1_G\n", 0);
+	_gp_WaitForVBlank();
+	printf("********************************");
+	printf("*                              *");
+	printf("* Sistema Operativo GARLIC 0.5 *");
+	printf("*                              *");
+	printf("********************************");
+	printf("*** Inicio fase 1_M\n");
 	
-	_gd_pidz = 3;	// simular zócalo 3
-	hola();
+	printf("*** Carga de programa HOLA.elf\n");
+	start = _gm_cargarPrograma("HOLA");
+	if (start)
+	{	printf("*** Direccion de arranque :\n\t\t%p\n", start);
+		printf("*** Pusle \'START\' ::\n\n");
+		while(1) {
+			_gp_WaitForVBlank();
+			scanKeys();
+			if (keysDown() & KEY_START) break;
+		}
+		start();
+	} else
+		printf("*** Programa NO cargado\n");
 
-	_gg_escribir("*** Final fase 1_G\n", 0);
+	printf("*** Final fase 1_M\n");
 
 	while(1) {
 		_gp_WaitForVBlank();
@@ -58,24 +74,11 @@ int main(int argc, char **argv) {
 }
 
 
-/* Proceso de prueba */
+
+/* rutina de soporte para _gi_print */
 //------------------------------------------------------------------------------
-int hola() {
+void _gg_escribir(char * message, int z) {
 //------------------------------------------------------------------------------
-	unsigned int i, iter;
-	char num[3];
-	
-	GARLIC_print("-- Programa HOLA (Garlic 0.5) --");
-							// cálculo del número aleatorio de iteraciones
-	GARLIC_divmod((unsigned) GARLIC_random(), 100, &i, &iter);
-	iter++;
-	//iter = 	23;				// asegurar que hay al menos una iteración
-	for (i = 0; i < iter; i++)
-	{
-		GARLIC_num2str(num, 3, i);
-		GARLIC_print(num);
-		GARLIC_print("\tHello world!\n");
-	}
-	return 0;
+	printf("%s", message);	// imprimir toda la línea
 }
 
