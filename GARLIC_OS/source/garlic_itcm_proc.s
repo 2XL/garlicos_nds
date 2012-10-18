@@ -91,13 +91,17 @@ _gp_rsiVBL:
 	mov r6, #0xf				@; cargamos en r6 el valor de los 4 bits bajos en 1
 	and r6,r7					@; hacemos un and para saber si z=0
 	cmp r6,#0
-	bne .LrsiVBL_End			@; en caso de que no sea igual a 0 el proceso ha terminado su ejecuccion
+	bne .LrsiVBL_Rest			@; en caso de que no sea igual a 0 el proceso ha terminado su ejecuccion
 .LrsiVBL_Save:
 	ldr r4, =_gd_nReady			@; cargamos la direccion de la variable numReady
 	ldr r5, [r4]				@; cargamos en r5 el valor de la variable numReady
 	ldr r6, =_gd_pidz			@; cargamos la direccion de la variable pidz
 	ldr r7, [r6]				@; cargamos en r7 el valor de la variable pidz
 	bl _gp_salvarProc			@; llamamos a la funcion de salvar
+.LrsiVBL_Rest:	
+	ldr r4, =_gd_nReady			@; cargamos la direccion de la variable numReady
+	ldr r5, [r4]				@; cargamos en r5 el valor de la variable numReady
+	ldr r6, =_gd_pidz			@; cargamos la direccion de la variable pidz
 	bl _gp_restaurarProc		@; llamamos a la funcion de restaurar	
 .LrsiVBL_End:
 	pop {r4-r7, pc}
@@ -232,7 +236,7 @@ _gp_restaurarProc:
 	add r11, #0xc				@; sumamos 12 para acceder al campo Status
 	ldr r8, =_gd_psv			@; r8<=_gd_psv
 	ldr r10, [r8, r11]			@; guardamos en r10 el valor del campo Status
-	mov r10, #0x10				
+	mov r10, #0x10				@; realizamos este cambio forzoso porque cabe la posibilidad de guardar el modo irq en vez del modo que toca y entonces no haria lo que debe hacer			
 	msr SPSR, r10				@; guardamos CPSR (Status) en SPSR_irq
 	mov r8, sp					@; guardamos SP_irq
 	
