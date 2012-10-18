@@ -48,7 +48,7 @@ CFLAGS	:=	-Wall -g -O2 \
 CFLAGS	+=	$(INCLUDE) -DARM9
 
 ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-specs=ds_arm9.specs $(ARCH) -mno-fpu
+LDFLAGS	=	-specs=ds_arm9.specs $(ARCH)
 
 #-------------------------------------------------------------------------------
 # any extra libraries we wish to link with the project (order is important)
@@ -116,12 +116,12 @@ clean:
 	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).nds
 
 #---------------------------------------------------------------------------------
-debug : $(TARGET).nds
+run : $(TARGET).nds
 	@echo "runing $(TARGET).nds with DesmuME"
 	@$(DESMUME)/DeSmuME.exe $(TARGET).nds &
 
 #---------------------------------------------------------------------------------
-run : $(TARGET).nds $(TARGET).elf
+debug: $(TARGET).nds $(TARGET).elf
 	@echo "testing $(TARGET).nds/.elf with DeSmuME_dev/Insight (gdb) through TCP port=1000"
 	@$(DESMUME)/DeSmuME_dev.exe --arm9gdb=1000 $(TARGET).nds &
 	@$(DEVKITPRO)/insight/bin/arm-eabi-insight $(TARGET).elf &
