@@ -79,13 +79,8 @@ BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.bin)))
 export OFILES	:=	$(BINFILES:.bin=.o) $(CFILES:.c=.o)
 export SFILES	:=	$(AFILES:.s=.o)
 
-# GARLIC_API is the directory where the API's include and source code lives
-#			(assume a relative structure of the GARLIC project directories)
-export GARLICAPI	:=	$(CURDIR)/../GARLIC_API
-
 export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
-					$(foreach dir,$(LIBNDS),-I$(dir)/include) \
-					-I$(GARLICAPI)
+					$(foreach dir,$(LIBNDS),-I$(dir)/include)
  
 export LIBPATHS	:=	$(foreach dir,$(LIBNDS),-L$(dir)/lib)
 
@@ -145,7 +140,7 @@ $(OUTPUT).elf	:	$(OFILES) $(SFILES)
 #---------------------------------------------------------------------------------
 %.elf:
 	@echo linking $(notdir $@)
-	$(LD)  $(LDFLAGS) $(OFILES) $(LIBPATHS) $(LIBS) $(SFILES) $(GARLICAPI)/GARLIC_API.o -o $@
+	$(LD)  $(LDFLAGS) $(OFILES) $(LIBPATHS) $(LIBS) $(SFILES) -o $@
 
 #---------------------------------------------------------------------------------
 %.bin.o	:	%.bin
