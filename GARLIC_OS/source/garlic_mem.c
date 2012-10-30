@@ -102,8 +102,7 @@ void _gm_relocatar(unsigned int *destino, char *file, unsigned int pAddr)
 					
 					printf(">>> rel %d (R_ARM_ABS32): 0x%X\n", contador_r, r_offset);
 					
-					direccion = (unsigned int*)destino;
-					direccion = (unsigned int*)((int)direccion + r_offset - pAddr);
+					direccion = (unsigned int*)((int)destino + r_offset - pAddr);
 					*(direccion) = (int)destino + *(direccion) - pAddr ;
 					
 				}	//endif r
@@ -134,7 +133,7 @@ intFunc _gm_cargarPrograma(char *keyName) {
 	
 	// NOTA -- keyName es en mayus, así que hay que cambiar el nombre del archivo generado hola.elf por HOLA.elf
 	
-	char filename[100];
+	char filename[19];
 	strcpy(filename,path);
 	strcat(filename,keyName);
 	strcat(filename,extension);
@@ -151,8 +150,7 @@ intFunc _gm_cargarPrograma(char *keyName) {
 		fseek(inf,0,SEEK_SET);
 		
 		
-		char* puntero = (char*)malloc(len+1);
-		puntero[len] = 0;
+		char* puntero = (char*)malloc(len);
 		if (fread(puntero, 1, len, inf) != len)
 			iprintf("Error al leer bytes del archivo\n");
 		else
@@ -186,7 +184,6 @@ intFunc _gm_cargarPrograma(char *keyName) {
 			
 			// Variables segmentos
 			int destino = MEMORIA_PROGRAMA;		// 0x02100000
-			int mem_offset = 0;					// Para determinar dónde cargar segmentos si hay más de 1
 			pos = phoff;
 			int pos_ini = pos;
 			int p_paddr = 0;					// Para evitar el warning de que podría no estar declarada
@@ -208,9 +205,7 @@ intFunc _gm_cargarPrograma(char *keyName) {
 					
 					
 					// Copiar a la memoria
-					destino = destino + mem_offset;							// Se actualiza destino (+0 en la primera iteración)
-					mem_offset = mem_offset + p_memsz;						// Se actualiza el offset de memoria para la siguiente iteración
-					dmaCopy((const void*)&puntero[p_offset], (void*)destino, p_memsz);
+					dmaCopy((const void*)&puntero[p_offset], (void*)destino, p_filesz);
 					
 					
 					printf("> segmento num. %d copiado:\n", contador);
@@ -219,7 +214,9 @@ intFunc _gm_cargarPrograma(char *keyName) {
 					printf("   tam. en memoria : %d\n", p_memsz);
 					
 					
-					_gm_relocatar((unsigned int*)destino, puntero, p_paddr);	
+					_gm_relocatar((unsigned int*)destino, puntero, p_paddr);
+					
+					destino = destino + p_memsz;				// Se actualiza destino
 					
 					
 					
