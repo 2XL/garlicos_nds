@@ -1,108 +1,295 @@
+
+
+
 /*------------------------------------------------------------------------------
 
-	"garlic_graf.c" : fase 1 / programador G
+	"garlic_graf.c" : fase 2 / programador G
 
 	Rutinas de gestión del entorno gráfico (ventanas de texto), para el sistema
-	GARLIC 0.5
+	GARLIC 1.0
 
 ------------------------------------------------------------------------------*/
 #include <nds.h>
-
+#include <stdio.h>
 #include <garlic_system.h>	// definición de funciones y variables de sistema
 #include <garlic_font.h>	// definición gráfica de caracteres
-int bg2A_id; // la funció li falta un altre parametre...
- //FUNCIONS AUXILIARS...
-void _gg_zocaloScroll ();
-void _gg_initMarco();
 
-/* Inicializaciones gráficas del sistema Garlic */
-//------------------------------------------------------------------------------
+#define VCOLS	32
+#define VFILS	24			// definiciones para 16 ventanas
+#define PPART	4				// número de ventanas horizontales o verticales
+#define PCOLS	VCOLS * PPART	// número de columnas por pantalla
+#define PFILS	VFILS * PPART	// número de filas por pantalla
+#define ZMODM	3				// máscara para el módulo al número de zócalo
+#define ZBITS	2				// bits de desplazamiento al número de zócalo
+
+const unsigned int char_colors[] = {0xF0, 0x60 , 0x40};		// parametre global que especifica el color
+
+int bg3A_id;
+
+								// groc  -  verd  -  vermell
+ //FUNCIONS AUXILIARS...
+void _gg_zocaloScroll ();		// desplaçar el contingut d'un zocalo una fila amunt
+void _gg_initMarco();			// inicialitzar els 16 marcs
+void _gg_dibujarMarco();		// dibuixar un marco concret
+void _gg_initGraf();			// inicialitzar la pantalla principal
+void _gg_initGrafSub();			// inicialitzar la pantalla tactil
+void _gg_initBaldosaAux();		// inicialitzar les baldoses de colors
+void _gg_initGraficaOcupaMem();	// inicialitzar les baldoses de memoria ocupada
+
+const char tabla[][32] =
+	{{ 10,  0, 51, 73, 83, 84, 69, 77, 65,  0, 47, 80, 69, 82, 65, 84, 73, 86, 79,  0, 39, 33, 50, 44, 41, 35,  0, 17, 14, 16,  0, 10},
+	 {106,105,105,111,105,105,105,105,111,105,105,105,105,111,105,105,105,105,105,105,105,105,111,105,105,111,105,111,105,105,105,109},
+	 {104,  0, 58,104,  0, 48, 41, 36,104, 48, 82, 79, 71,104, 36, 73, 82, 14, 41, 78, 73, 14,104, 48, 73,104, 37,104, 53, 83, 79,104},
+	 {115,116,116,117,116,116,116,116,117,116,116,116,116,117,116,116,116,116,116,116,116,116,117,116,116,117,116,117,116,116,116,118},
+	 {104,  0,  0,104,  0,  0,  0,  0,104,  0,  0,  0,  0,104,  0,  0,  0,  0,  0,  0,  0,  0,104,  0,  0,104,  0,104,  0,  0,  0,104},
+	 {107,105,105,113,105,105,105,105,113,105,105,105,105,113,105,105,105,105,105,105,105,105,113,105,105,113,105,113,105,105,105,108}};
+
+
+
+/* Escribe los campos básicos de una linea de la tabla correspondiente al
+		zócalo indicado por parámetro con el color especificado; los campos
+		son: número de zócalo, PID, keyName y dirección inicial */
+void _gg_escribirLineaTabla(int z, int color)
+{
+
+
+}
+
+
+/* Dibuja las separaciones de la linea de la tabla correspondientes al zócalo
+		que se pasa por parámetro, con el color especificado */
+void _gg_dibujarSeparadoresTabla(int z, int color)
+{
+
+
+}
+
+/* Dibujar la tabla de procesos */
+void _gg_dibujarTabla()
+{
+
+
+}
+
+
+/* Dibujar el marco correspondiente al zócalo que se pasa por parámetro, según
+	el color especificado */
+void _gg_dibujarMarco(int z, int color)
+{
+	
+	u16* buffer = (u16*)bgGetMapPtr(bg3A_id);
+
+	
+	// determinar el offset inicial
+		int iniX = z/4, iniY = z%4;
+		int offset = (iniX*32+iniY*128*24);	
+	
+	// determinar el
+		int i = 0;
+		int j = 0;
+ 
+	// dibujar
+		for(i=0; i<32; i++)
+			{	
+			buffer[offset+i] = 99+128*color;
+			buffer[offset+128*23+i] = 97+128*color;
+			}
+		for(j=0; j<24; j++)
+			{
+			buffer[offset+j*128] = 96+128*color;
+			buffer[offset+31+j*128] = 98+128*color;
+			}
+ 
+		buffer[offset] = 103+128*color;
+		buffer[offset+31] = 102+128*color;
+		buffer[offset+23*128] = 100+128*color;
+		buffer[offset+23*128+31] = 101+128*color;
+ 
+
+ 
+}
+
+void _gg_initMarco(int marcos, int color)	
+{ 
+	
+				// zocalo - color //
+	int index = 0;
+	for(index = 0; index< marcos; index++)
+		_gg_dibujarMarco(index, color);
+
+}
+
+
 void _gg_iniGraf()
 //------------------------------------------------------------------------------
 {
+	
+	_gg_initGraf();			// inicialitzar la pantalla superior/principal
+	_gg_initGrafSub();		// inicialitzar la pantalla inferior/tactil
+	
+	bgUpdate();				// actualitzar la pantalla per zoom...etc.
+
+}
+
+// inicialitzacio de la pantalla principal
+void _gg_initGraf()
+{
 	// Declaracio de Variables
-		int bg3A_id;
-		int scale = 1<<8; // que en sistema de coma fija es 256 para el caso de 8 en factor de escala.
+		
+		int zoom = 4;				// en el cas que volguem ((*)-- || (/)++) zoom.
+		int scale = (1<<8)*zoom; 	// que en sistema de coma fija es 256  
  
-	// inicializar el procesador gráfico ?§principal en modo 5:
-		videoSetMode(MODE_5_2D ); //	OK
-		vramSetBankA(VRAM_A_MAIN_BG );	// OK
-		 
-	// inicializar los fondos gráficos 2 y 3 en modo Extended Rotation, con un tamaño de 512x512 píxeles,marcoFondo3
-		bg2A_id = bgInit(2, BgType_ExRotation, BgSize_ER_512x512, 12, 3);	// retorna id fondo 2A
-		bg3A_id = bgInit(3, BgType_ExRotation, BgSize_ER_512x512, 6, 3);	// retorna id fondo 3A
-						//	int layer -  BgType type - BgSize - int mapBase - int tileBase);	
-		bgSetPriority(bg3A_id, 0);		// fijar el fondo 3 como más prioritario que el fondo 2,
-		bgSetPriority(bg2A_id, 1);
-
-		dmaCopy(garlic_fontTiles, bgGetGfxPtr(bg3A_id), garlic_fontTilesLen);		// copiar las baldosas y la paleta para la fuente de letras
-		dmaCopy(garlic_fontPal, BG_PALETTE, garlic_fontPalLen);						// los palettes :> colores
-
-	// generar los marcos de las ventanas de texto e??n el fondo 3,
-		_gg_initMarco(&bg3A_id); // max 4..., mem reserv = max 4 marco... // quedaria bé pasar per parametre lo punter del marco pero aqui suposem que sempre sera el 3.
-
-	// escalar los fondos 2 y 3 para que quepan en la pantalla superior de la NDS.
-		bgSetScale(bg3A_id, (scale)*2,(scale)*2); // massa zoooom perjudica la vista potser que m'hagi sortit del rang
-		bgSetScale(bg2A_id, (scale)*2,(scale)*2); 
+	// inicializar el procesador gráfico principal en modo 5:
+		videoSetMode(MODE_5_2D ); 					
+		vramSetBankA(VRAM_A_MAIN_BG_0x06000000 );	
+		
+	
+	// inicializar el fondo 3 --> prioridad maxima para fondo3 --> type - size --> mapBase	(16 Kbytes) ||
+		bg3A_id = bgInit(3, BgType_ExRotation, BgSize_ER_1024x1024, 0, 2);	// --> tilebase	(2 	Kbytes) ||
+		bgSetPriority(bg3A_id, 0);													
+	
+	// Inicialitzar les baldoses de fuente original i de color
+		int offsetSize = 1<<12;		// tamany que ocupa les baldoses
+		int numCopyTiles = 0;		// comptador de numero de copies efectuades
+		
+		while(numCopyTiles!=4)		
+			{ 
+			
+			// efectuar la copia a la memoria
+			dmaCopy(garlic_fontTiles, bgGetGfxPtr(bg3A_id)+offsetSize*numCopyTiles, garlic_fontTilesLen);		
+		
+			
+			// declarar variables i comptador
+			u16 *buffer = (bgGetGfxPtr(bg3A_id)+offsetSize*numCopyTiles); 
+			int i = 0;
+			int color = char_colors[numCopyTiles-1];
+			int cFF00 = color<<8 , c00FF = color, cFFFF = (cFF00|c00FF); 
+		
+			// assignar els colors adients
+			if(numCopyTiles!=0)										
+				for ( i = 0; i< offsetSize ; i++)		
+					{
+					if(buffer[i] != 0)
+						switch (buffer[i])
+							{
+							case 0x00FF:	 buffer[i] = c00FF;		break;
+							case 0xFF00:	 buffer[i] = cFF00;		break;
+							case 0xFFFF:   	 buffer[i] = cFFFF;		break;
+							}
+					}
+				numCopyTiles++;
+			}
+	// inicialitzar baldosas de grafica de memoria 		
+		u16 *buffer 	= (bgGetGfxPtr(bg3A_id)+offsetSize*4);			// declarar punter o anirá les baldoses de graf de memoria
+		u16 *baldosa119 = (bgGetGfxPtr(bg3A_id)+(offsetSize/128)*119);	// cargar la baldosa 119
+		int i = 0;	// indice de baldosas a copiar 96
+		int j = 0;	// indice baldosa;
+		int k = 0;	// indice buffer;
+		
+		for(i=0; i<96; i++)
+			for(j=0; j<32; j++, k++)
+				buffer[k] = baldosa119[j]; 
+	
+	// inicialitzar les paletes de colors de la pantalla principal
+		dmaCopy(garlic_fontPal, BG_PALETTE, garlic_fontPalLen);						
+		
+		_gg_initMarco(16, 3);
+		
+		bgSetScale(bg3A_id, scale, scale); // massa zoooom perjudica la vista potser que m'hagi sortit del rang
 
 	//	bgSetScroll(bg2A_id, 256 ,192);		// desplaçar el fons de la pantalla 2 a baix-dret
-bgUpdate();
-// scale eix x e eix y
 }
 
 
-/* dibujar nº zocalos en el marco de fondo 3, como rango de 1 hasta 4,
-	numZocalos Fila local (entre 1 i 2) (offset implica numFilaZocalo) 
-	pasar la matriz por parametro...									*/
-void _gg_initMarco(int *bg_id)	
-{ 
-	u16* buffer = (u16*)bgGetMapPtr(*bg_id);
- 
- int ix = 0;
-	for (ix = 0; ix< 64; ix ++)
-	{
-	buffer[ix] = 99;
-	buffer[ix+64*23] = 97;
-	buffer[ix+64*24] = 99;
-	buffer[ix+64*47] = 97;
-	}
+
+
+// inicialitzacio de la pantalla secundaria
+void _gg_initGrafSub()
+{
+	// variables
+		int bg0C_id;
 	
- int iy = 0;
-	for (iy = 0; iy <48;  iy++)
-	{
-	buffer[iy*64] = 96;
-	buffer[31+iy*64] = 98;
-	buffer[32+iy*64] = 96;
-	buffer[63+iy*64] = 98;
-	}
- // colocar els costats dels marcos
- int i = 0;
+	// inicialitzar el procesador grafic secundari modo 5 i el fondo 0 
+		videoSetModeSub(MODE_5_2D | DISPLAY_BG0_ACTIVE );
+		vramSetBankC(VRAM_C_SUB_BG_0x06200000);
+		bg0C_id = bgInitSub(0, BgType_Text8bpp , BgSize_T_256x256, 16,0);	
+	 
+	 
+	// copiar las baldosas de fuente original, de color i las de grafocp memoria 
+		int offsetSize = 1<<12;
+		int numCopyTiles = 0;
  
- while (i!=2)
-	{
-	int offset = 64*24*i;
  
-	buffer[0			+offset] = 103;
-	buffer[31			+offset] = 102;
-	buffer[64*23		+offset] = 100;
-	buffer[64*23 + 31	+offset] = 101;
  
-	buffer[0			+offset+32] = 103;
-	buffer[31			+offset+32] = 102;
-	buffer[64*23		+offset+32] = 100;
-	buffer[64*23 + 31	+offset+32] = 101;
  
-	i++;
-	}	
+ while(numCopyTiles!=4)		
+			{ 
+			
+			// efectuar la copia a la memoria
+			dmaCopy(garlic_fontTiles, bgGetGfxPtr(bg0C_id)+offsetSize*numCopyTiles, garlic_fontTilesLen);		
+		
+					// declarar variables i comptador
+			u16 *buffer = (bgGetGfxPtr(bg0C_id)+offsetSize*numCopyTiles); 
+			int i = 0;
+			int color = char_colors[numCopyTiles-1];
+			int cFF00 = color<<8 , c00FF = color, cFFFF = (cFF00|c00FF); 
+		
+			// assignar els colors adients
+			if(numCopyTiles!=0)										
+				for ( i = 0; i< offsetSize ; i++)		
+					{
+					if(buffer[i] != 0)
+						switch (buffer[i])
+							{
+							case 0x00FF:	 buffer[i] = c00FF;		break;
+							case 0xFF00:	 buffer[i] = cFF00;		break;
+							case 0xFFFF:   	 buffer[i] = cFFFF;		break;
+							}
+					}
+				numCopyTiles++;
+			}
+		
+		
+		u16 *buffer 	= (bgGetGfxPtr(bg0C_id)+offsetSize*4);			// declarar punter o anirá les baldoses de graf de memoria
+		u16 *baldosa119 = (bgGetGfxPtr(bg0C_id)+(offsetSize/128)*119);	// cargar la baldosa 119
+		int i = 0;	// indice de baldosas a copiar 96
+		int j = 0;	// indice baldosa;
+		int k = 0;	// indice buffer;
+		
+		for(i=0; i<96; i++)
+			for(j=0; j<32; j++, k++)
+				buffer[k] = baldosa119[j]; 
+	
+		
+		
+		
+		dmaCopy(garlic_fontPal, BG_PALETTE_SUB, garlic_fontPalLen);						
+		
+		 
+		
+		u16 *subuffer =  bgGetMapPtr(bg0C_id);
+		k=0;i=0; i=0;
+		for(j=0; 	j<6; 	j++)
+			for(i=0;	i<32;	i++, k++)
+				
+				if(j==0)
+					subuffer[k] = tabla[j][i]+128; 
+				else
+					subuffer[k] = tabla[j][i]; 
+		
+	bgUpdate();
 }
+
+
+
 
 /* Escribir un mensaje de texto, como vector de caracteres terminado por cero,
 	en la ventana correspondiente al zócalo indicado por parámetro */
 //------------------------------------------------------------------------------
-void _gg_escribir(char *mensaje, int zocalo)
+void _gg_escribir(char *mensaje, int color, int zocalo)
 //------------------------------------------------------------------------------
 {
-	u16* buffer = (u16*)bgGetMapPtr(bg2A_id);
+u16* buffer = (u16*)VRAM_A_MAIN_BG;	// como saber por donde empieza la memoria ?
 	int aux = _gd_psv[zocalo].pControl;
 
 // Posició Especifica
@@ -160,7 +347,7 @@ void _gg_escribir(char *mensaje, int zocalo)
 					}
 				 			// comptador del char
 				for(aux = 0  ; aux < j; aux++) 
-					buffer[offset +  indexY*64 + aux] = _gd_psv[zocalo].pChars[aux]-32;	// -32 perque les tiles estan desfaçades respecte ASCI
+					buffer[offset +  indexY*64 + aux] = (_gd_psv[zocalo].pChars[aux]-32)+(128*color);	// -32 perque les tiles estan desfaçades respecte ASCI
 				j = 0;
 				 	
 				indexY++;
@@ -175,7 +362,6 @@ void _gg_escribir(char *mensaje, int zocalo)
 
 }
 
-/* realizar un Scroll i borrar la ultima linea */
 void _gg_zocaloScroll (int offset, u16* buffer)
 {
  int x, y;
@@ -186,5 +372,45 @@ void _gg_zocaloScroll (int offset, u16* buffer)
 	}
 }
 
+
+/* Escribir una baldosa (carácter con color) en una determinada posición (vx, vy) de
+	la ventana correspondiente al zócalo indicado por parámetro */
+//------------------------------------------------------------------------------
+void _gg_escribirCar( int vx, int vy, char c, int color, int zocalo )
+{
+	/*	--> cada zocalo = 32 * 24 * 2 = 1536
+	
+	0	-	1	-	2	-	3 
+	4	-	5	-	6	-	7
+	8	-	9	-	10	-	11
+	12	-	13	-	14	-	15	
+	
+	*/
+	
+	// determinar el puntero buffer de memoria
+		u16* buffer = (u16*)VRAM_A_MAIN_BG;
+	// determinar el offset o la posicion de la memoria
+		int offset = (zocalo*128*24+vx + vy*128);
+	// determinar el indice caracter i sumar su offset
+		short caracter = (short)c-32-48;
+	// escribir
+		buffer[offset] = caracter+(color*128);
+
+
+
+}
+
+/* Escribir una matriz de 8x8 caracteres en una determinada posición (vx, vy) de
+	la ventana correspondiente al zócalo indicado por parámetro */
+//------------------------------------------------------------------------------
+
+void _gg_escribirMat (int vx, int vy, char m[][8], int color, int zocalo)
+{
+	// seria aprovechar escribir car? o todo a mano i más optimo¿
+	int i=0, j=0;
+	for(i=0; i<8; i++)
+	 for(j=0; j<8; j++)
+		_gg_escribirCar(vx+j,vy+i, m[j][i], color, zocalo);
+}
 
 

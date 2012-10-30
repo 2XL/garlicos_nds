@@ -26,6 +26,67 @@ int zoom_ant = 2 << 8;				// zoom anterior
 int numFrames = 0;		// número de frames actual
 
 
+
+void movimientoVentanas();
+int  escogerOpcion(char *opciones[], int num_opciones);
+void seleccionarPrograma();
+void redibujarZocalo(int seleccionar);
+void ajustarScroll();
+void iniciarZoom();
+void controlInterfaz();
+void gestionSincronismos();
+void inicializarSistema();
+
+
+//------------------------------------------------------------------------------
+int main(int argc, char **argv) {
+//------------------------------------------------------------------------------
+
+	inicializarSistema();
+	
+	_gg_escribir("********************************", 1, 0);
+	_gg_escribir("*                              *", 1, 0);
+	_gg_escribir("* Sistema Operativo GARLIC 1.0 *", 1, 0);
+	_gg_escribir("*                              *", 1, 0);
+	_gg_escribir("********************************", 1, 0);
+	_gg_escribir("*** Inicio fase 2 / ProgG\n", 1, 0);
+
+	num_progs = 4;
+	progs[0] = "BORR";		// se supone que estos programas están disponibles
+	progs[1] = "CRON";		// en el directorio "Programas" de las estructura
+	progs[2] = "HOLA";		// de ficheros de Nitrofiles
+	progs[3] = "PONG";
+	while (1)						// bucle infinito
+	{	controlInterfaz();
+		gestionSincronismos();
+		_gp_WaitForVBlank();		// retardo del proceso de sistema
+	}
+	return 0;			
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /* Función para realizar el movimiento de las ventanas en medio segundo */
 void movimientoVentanas()
 {
@@ -341,30 +402,6 @@ void inicializarSistema() {
 
 
 
-//------------------------------------------------------------------------------
-int main(int argc, char **argv) {
-//------------------------------------------------------------------------------
 
-	inicializarSistema();
-	
-	_gg_escribir("********************************", 1, 0);
-	_gg_escribir("*                              *", 1, 0);
-	_gg_escribir("* Sistema Operativo GARLIC 1.0 *", 1, 0);
-	_gg_escribir("*                              *", 1, 0);
-	_gg_escribir("********************************", 1, 0);
-	_gg_escribir("*** Inicio fase 2 / ProgG\n", 1, 0);
-
-	num_progs = 4;
-	progs[0] = "BORR";		// se supone que estos programas están disponibles
-	progs[1] = "CRON";		// en el directorio "Programas" de las estructura
-	progs[2] = "HOLA";		// de ficheros de Nitrofiles
-	progs[3] = "PONG";
-	while (1)						// bucle infinito
-	{	controlInterfaz();
-		gestionSincronismos();
-		_gp_WaitForVBlank();		// retardo del proceso de sistema
-	}
-	return 0;			
-}
 
 
