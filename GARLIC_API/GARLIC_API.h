@@ -37,9 +37,38 @@ extern int GARLIC_divmod(unsigned int num, unsigned int den,
 		ATENCIóN: sólo procesa números naturales de 32 bits SIN signo. */
 extern int GARLIC_num2str(char * numstr, unsigned int length, unsigned int num);
 
-	/* GARLIC_print: escribir string en la ventana del proceso actual */
-extern void GARLIC_print(char * string);
+	/* GARLIC_print: escribir string en la ventana del proceso actual, con el
+		color especificado por parámetro (0 -> blanco, 1 -> amarillo, 2 -> verde,
+		1 -> rojo) */
+extern void GARLIC_print(char * string, int color);
 
+	/* GARLIC_printchar: escribir un carácter (c) en la posición (vx, vy) de la
+		ventana del proceso actual, donde (vx) tiene rango [0..31] y (vy) tiene
+		rango [0..23], con el color especificado por parámetro (0 -> blanco,
+		1 -> amarillo, 2 -> verde, 1 -> rojo) */
+extern void GARLIC_printchar(int vx, int vy, char c, int color);
+
+	/* GARLIC_printmat: escribir una matriz de carácteres (m) en la posición
+		(vx, vy) de la ventana del proceso actual, donde (vx) tiene rango
+		[0..31] y (vy) tiene rango [0..23], con el color especificado por
+		parámetro (0 -> blanco,	1 -> amarillo, 2 -> verde, 1 -> rojo);
+		 la matriz consistirá en 8x8 posiciones	con códigos ASCII, aunque las
+		posiciones que contengan un código inferior a 32 (espacio en blanco) no
+		modificarán las casillas correspondientes de la ventana. */
+extern void GARLIC_printmat(int vx, int vy, char m[][8], int color);
+
+	/* GARLIC_delay: retardar la ejecución del proceso actual el número de
+		segundos que se especifica por el parámetro (nsec); el rango permitido
+		será de [0..600] (max. 10 minutos); el valor 0 provocará que el proceso
+		se desbanque y pase a READY, sin determinar un retardo concreto (el que
+		resulte de volver a restaurar el proceso). */
+extern void GARLIC_delay(unsigned int nsec);
+
+
+	/* GARLIC_clear: borra todo el contenido de la ventana del proceso que
+		invoca esta función. La siguiente llamada a la función GARLIC_print
+		empezará a escribir a partir de la primera fila de la ventana. */
+extern void GARLIC_clear();
 
 
 #endif // _GARLIC_API_h_
