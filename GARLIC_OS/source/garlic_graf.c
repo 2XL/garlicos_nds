@@ -10,16 +10,8 @@
 
 #include <garlic_system.h>	// definición de funciones y variables de sistema
 #include <garlic_font.h>	// definición gráfica de caracteres
-
-
-int bg2A_id, bg3A_id;
-int scale = 1<<8; // que en sistema de coma fija es 256 para el caso de 8 en factor de escala.
- 
-char marcoFondo3[48][128];
-char marcoFondo2[48][128];
- 
-//FUNCIONS AUXILIARS...
-
+int bg2A_id; // la funció li falta un altre parametre...
+ //FUNCIONS AUXILIARS...
 void _gg_zocaloScroll ();
 void _gg_initMarco();
 
@@ -28,20 +20,18 @@ void _gg_initMarco();
 void _gg_iniGraf()
 //------------------------------------------------------------------------------
 {
-	
-	
-	
+	// Declaracio de Variables
+		int bg3A_id;
+		int scale = 1<<8; // que en sistema de coma fija es 256 para el caso de 8 en factor de escala.
+ 
 	// inicializar el procesador gráfico ?§principal en modo 5:
-		videoSetMode(MODE_5_2D |  DISPLAY_BG3_ACTIVE |  DISPLAY_BG2_ACTIVE); //	OK
-
-	//reservar el banco de memoria de vídeo A,
+		videoSetMode(MODE_5_2D ); //	OK
 		vramSetBankA(VRAM_A_MAIN_BG );	// OK
 		 
 	// inicializar los fondos gráficos 2 y 3 en modo Extended Rotation, con un tamaño de 512x512 píxeles,marcoFondo3
 		bg2A_id = bgInit(2, BgType_ExRotation, BgSize_ER_512x512, 12, 3);	// retorna id fondo 2A
 		bg3A_id = bgInit(3, BgType_ExRotation, BgSize_ER_512x512, 6, 3);	// retorna id fondo 3A
 						//	int layer -  BgType type - BgSize - int mapBase - int tileBase);	
-	
 		bgSetPriority(bg3A_id, 0);		// fijar el fondo 3 como más prioritario que el fondo 2,
 		bgSetPriority(bg2A_id, 1);
 
@@ -49,85 +39,62 @@ void _gg_iniGraf()
 		dmaCopy(garlic_fontPal, BG_PALETTE, garlic_fontPalLen);						// los palettes :> colores
 
 	// generar los marcos de las ventanas de texto e??n el fondo 3,
-		_gg_initMarco(4, marcoFondo3); // max 4..., mem reserv = max 4 marco... // quedaria bé pasar per parametre lo punter del marco pero aqui suposem que sempre sera el 3.
-		dmaCopy(marcoFondo3, bgGetMapPtr(bg3A_id), sizeof(marcoFondo3));
-		dmaCopy(marcoFondo2, bgGetMapPtr(bg2A_id), sizeof(marcoFondo2));
-	
+		_gg_initMarco(&bg3A_id); // max 4..., mem reserv = max 4 marco... // quedaria bé pasar per parametre lo punter del marco pero aqui suposem que sempre sera el 3.
+
 	// escalar los fondos 2 y 3 para que quepan en la pantalla superior de la NDS.
 		bgSetScale(bg3A_id, (scale)*2,(scale)*2); // massa zoooom perjudica la vista potser que m'hagi sortit del rang
 		bgSetScale(bg2A_id, (scale)*2,(scale)*2); 
 
 	//	bgSetScroll(bg2A_id, 256 ,192);		// desplaçar el fons de la pantalla 2 a baix-dret
-
-
-// scale eix x e eix y
-_gp_WaitForVBlank();
 bgUpdate();
+// scale eix x e eix y
 }
 
 
-
-
-
-
-/* dibujar nº zocalos en el marco de dondo 3, como rango de 1 hasta 4,
+/* dibujar nº zocalos en el marco de fondo 3, como rango de 1 hasta 4,
 	numZocalos Fila local (entre 1 i 2) (offset implica numFilaZocalo) 
 	pasar la matriz por parametro...									*/
-void _gg_initMarco(int numZocalos, char marco[48][128])	
+void _gg_initMarco(int *bg_id)	
 { 
-	int indexActual = 0;	// contador del dibujo zocalo...
-
-	int indexX = 0, indexY = 0;
-	int findexX = indexX + 63;
-	int findexY = indexY + 23;
-
-	while (numZocalos != indexActual)
-		{
-		if(indexActual % 2 == 0)	// actualitzar indexX i indexY
-			{
-			indexX =  0;	
-			indexY =  (indexActual / 2) * 24;
-			findexX =  62;
-			findexY = indexY + 23;
-			}
-		else
-			{
-			indexY = (indexActual / 2) * 24;
-			findexY = indexY + 23;
-			indexX =  64;	
-			findexX =  	findexX + 64;
-			}
-
-	// Actualitzar comptadors
-		marco[indexY][indexX] = 103;
-		marco[findexY][indexX] = 100;
-		marco[indexY][findexX] = 102;
-		marco[findexY][findexX] = 101;
-		
-	// inicialitzar fila corresponent
-		for( indexX = indexX+2; indexX<findexX; indexX =indexX+2)	// per no tocar l'ultim ni el primer "tile"
-			{
-			marco[indexY][indexX] = 99;
-			marco[findexY][indexX] = 97;
-			}
-		
-		indexX = indexX - 62; // restablir l'offset	
+	u16* buffer = (u16*)bgGetMapPtr(*bg_id);
+ 
+ int ix = 0;
+	for (ix = 0; ix< 64; ix ++)
+	{
+	buffer[ix] = 99;
+	buffer[ix+64*23] = 97;
+	buffer[ix+64*24] = 99;
+	buffer[ix+64*47] = 97;
+	}
 	
-	// inicialitzar columna corresponent
-		for ( indexY = indexY+1; indexY<findexY; indexY=indexY +1) // per no tocar l'ultim ni el primer "tile"
-			{
-			marco[indexY][indexX] = 96;
-			marco[indexY][findexX] = 98;
-			}
-
-		indexActual++;
-		}
+ int iy = 0;
+	for (iy = 0; iy <48;  iy++)
+	{
+	buffer[iy*64] = 96;
+	buffer[31+iy*64] = 98;
+	buffer[32+iy*64] = 96;
+	buffer[63+iy*64] = 98;
+	}
+ // colocar els costats dels marcos
+ int i = 0;
+ 
+ while (i!=2)
+	{
+	int offset = 64*24*i;
+ 
+	buffer[0			+offset] = 103;
+	buffer[31			+offset] = 102;
+	buffer[64*23		+offset] = 100;
+	buffer[64*23 + 31	+offset] = 101;
+ 
+	buffer[0			+offset+32] = 103;
+	buffer[31			+offset+32] = 102;
+	buffer[64*23		+offset+32] = 100;
+	buffer[64*23 + 31	+offset+32] = 101;
+ 
+	i++;
+	}	
 }
-
-
-
-
-
 
 /* Escribir un mensaje de texto, como vector de caracteres terminado por cero,
 	en la ventana correspondiente al zócalo indicado por parámetro */
@@ -135,32 +102,23 @@ void _gg_initMarco(int numZocalos, char marco[48][128])
 void _gg_escribir(char *mensaje, int zocalo)
 //------------------------------------------------------------------------------
 {
-
-//	control de escritura en ventana del zócalo
-							//		16 bits altos: número de línea (0-23)
-							//		16 bits bajos: caracteres pendientes (0-32)
-// mascara para bits altos : 23 --> 0xFFFF0000 ---> per determinar fila actual
-//				bits bajos : 32 --> 0x0000FFFF ---> per determinar numero de pChar actual
-		int aux = _gd_psv[zocalo].pControl;
+	u16* buffer = (u16*)bgGetMapPtr(bg2A_id);
+	int aux = _gd_psv[zocalo].pControl;
 
 // Posició Especifica
 	int pFila = aux >> 16;				// mentres sigui superior a x caldra fer lo de desplaçar 
 	int pnChars = (0x0000FFFF & aux);	
 
-// Origen Cordenades		
-		// per construir l'offset?
-	int x =  (zocalo % 2) * 64;	// fila inicial zocalo
+	int x =  (zocalo % 2) * 32;	// fila inicial zocalo
 	int y =  (zocalo / 2) * 24;	// columna inicial zocalo
 	
-// Limits Finals eix Vertical(numFila)	
-	int finY = y + 24;		// implica desplaçar cap amunt
-
+	int offset = y * 64 + x;		// offset del zocalo
 // Index Actual	
-		int indexX = x ;
-		int indexY = y + pFila;
-	
-	int i = 0;		 // index del missatge; 	// index del missatge per passarlo al pChar xD
-	int j = pnChars; // index pChar; 			// número de caracters carregats al buffer per imprimir
+		 
+	int indexY = pFila; 	// index de fila 	actual
+
+	int i = 0;		 			// index del missatge; 	// index del missatge per passarlo al pChar xD
+	int j = pnChars; 			// index pChar; 			// número de caracters carregats al buffer per imprimir
 	// carregar pChar		
 	
 	while (mensaje[i]!= '\0')		// sembla que l'estigui carregant
@@ -195,57 +153,38 @@ void _gg_escribir(char *mensaje, int zocalo)
 			if(j == 32) 	// en el cas de que estigui plé caldrà buidar-ho
 				{
 				
-				
-				if(indexY == finY)			// implica que ha arribat al maxim i no puc incrementar més d'offset ok!
+				if(indexY == 24)			// implica que ha arribat al maxim i no puc incrementar més d'offset ok!
 					{
-					_gg_zocaloScroll (x,y);		// només aplicable aquest marc en particular // passo l'origen de coordenades per lo Zocalo corresponent
+					_gg_zocaloScroll (offset, buffer);		// només aplicable aquest marc en particular // passo l'origen de coordenades per lo Zocalo corresponent
 					indexY--;
 					}
-					
-					
-					
-				_gp_WaitForVBlank();
-				int aux = 0; 			// comptador del char
-				for(aux = 0; aux < j; aux++) 
-					marcoFondo2[indexY][indexX+2*aux] = _gd_psv[zocalo].pChars[aux]-32;	// -32 perque les tiles estan desfaçades respecte ASCI
-					dmaCopy(marcoFondo2, bgGetMapPtr(bg2A_id), sizeof(marcoFondo2));
-					bgUpdate();
+				 			// comptador del char
+				for(aux = 0  ; aux < j; aux++) 
+					buffer[offset +  indexY*64 + aux] = _gd_psv[zocalo].pChars[aux]-32;	// -32 perque les tiles estan desfaçades respecte ASCI
 				j = 0;
-			
+				 	
 				indexY++;
-				
-			/*	
-				if(indexY == finY-1)			// implica que ha arribat al maxim i no puc incrementar més d'offset ok!
-					_gg_zocaloScroll (x,y);		// només aplicable aquest marc en particular // passo l'origen de coordenades per lo Zocalo corresponent
-				else
-					indexY++;
-			*/	
 				}		
 		}
 		
 		// actualitzar el index de pControl ! fin de fase!!!
 		
 		pnChars = j;
-		pFila = (indexY - y) << 16;
+		pFila = (indexY) << 16;
 		_gd_psv[zocalo].pControl = (pFila|pnChars);
+
 }
 
 /* realizar un Scroll i borrar la ultima linea */
-void _gg_zocaloScroll (int OriX, int OriY)
+void _gg_zocaloScroll (int offset, u16* buffer)
 {
-int fX = OriX + 64;
-int fy = OriY + 24;
-int i, j;
-
-for(j = OriY; j < fy; j+=1)
-	for(i = OriX; i < fX; i+=2)
-		marcoFondo2[j][i] = marcoFondo2[j+1][i];
-
-// deixar la ultima linea lliure i esborrar el contingut anterior
-	for(i = OriX; i < fX; i+=2)
-		marcoFondo2[fy-1][i] = 32-32;
+ int x, y;
+ for ( x = 0; x < 32 ; x++)
+  for ( y = 0; y < 24 ; y++)
+	{
+	buffer[offset + x + y*64] = buffer[ offset + x + (y+1) * 64];
+	}
 }
-
 
 
 
