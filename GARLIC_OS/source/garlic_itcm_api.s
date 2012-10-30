@@ -35,36 +35,6 @@ _gi_random:
 	@;Resultado
 	@; R0: 0 si no hay problema, !=0 si hay error en la división
 _gi_divmod:
-	@;Código para realizar la división con el hardware matemático de la NDS
-	@;ATENCIÓN: ¡NO funciona en un entorno emulado (DeSmuME)!
-	@;Por este motivo, el siguiente código está comentado:
-@;	push {r4, r5, lr}
-@;	mov r4, #0x04000000
-@;	add r4, #0x280			@; R4 = dir. base registro DIVCNT (0x04000280)
-@;	mov r5, #0
-@;	strh r5, [r4]			@; fijar modo 0 (división 32 bits)
-@;	str r0, [r4, #0x10]		@; guardar numerador en DIV_NUMER (0x04000290)
-@;	str r1, [r4, #0x18]		@; guardar denominador en DIV_DENOM (0x04000298)
-@;	str r5, [r4, #0x1c]		@; guardar cero en parte alta DIV_NUMER (0x0400029C)
-@;.Ldiv_wait:
-@;	ldrh r5, [r4]			@; bucle para esperar a que el hardware de división
-@;	tst r5, #0x8000			@; termine el cálculo (¡espera ACTIVA!)
-@;	bne .Ldiv_wait
-@;	tst r5, #0x4000			@; test del bit de error
-@;	beq .Ldiv_noerr
-@;	mov r0, r5				@; código de error
-@;	b .Ldiv_fin
-@;.Ldiv_noerr:
-@;	ldr r5, [r4, #0x20]		@; R5 = cociente, desde DIV_RESULT (0x040002A0)
-@;	str r5, [r2]			@; guardar resultado en dirección (*quo);
-@;	ldr r5, [r4, #0x28]		@; R5 = resto, desde DIVREM_RESULT (0x040002A8)
-@;	str r5, [r2]			@; guardar resultado en dirección (*mod);
-@;	mov r0, #0				@; código de retorno OK
-@;.Ldiv_fin:
-@;	pop {r4, r5, pc}
-	@;¡FIN del código comentado!
-	@;ATENCIÓN: en caso de descomentar el código anterior, la división pasaría
-	@;a realizarse CON signo.
 	push {r4-r7, lr}
 	cmp r1, #0				@; verificar si se está intentando dividir por cero
 	bne .Ldiv_ini
@@ -157,14 +127,113 @@ _gi_num2str:
 	.global _gi_print
 	@;Parámetros
 	@; R0: char * message
+	@; R1: int color
 _gi_print:
-	push {r1-r2, lr}
-	ldr r2, =_gd_pidz		@; R2 = dirección _gd_pidz
-	ldr r1, [r2]
-	and r1, #0xf			@; R1 = zócalo actual
+	push {r2-r3, lr}
+	ldr r3, =_gd_pidz		@; R3 = dirección _gd_pidz
+	ldr r2, [r3]
+	and r2, #0xf			@; R2 = zócalo actual
+	mov r1, r2				@; copiar zócalo en R1 (sólo para fase 2 / ProgP)
 	bl _gg_escribir
-	pop {r1-r2, pc}
+	pop {r2-r3, pc}
 
+
+	.global _gi_printchar
+	@;Parámetros
+	@; R0: int vx
+	@; R1: int vy
+	@; R2: char c
+	@; R3: int color
+_gi_printchar:
+	push {r4-r8, lr}
+	mov r6, r0
+	mov r7, r1
+	mov r8, r2
+	ldr r5, =_gd_pidz		@; R5 = dirección _gd_pidz
+	ldr r4, [r5]
+	and r4, #0xf			@; R4 = zócalo actual
+	ldr r5, =_gi_message
+	add r0, r5, #13
+	mov r1, #3
+	mov r2, r6
+	bl _gi_num2str			@; convertir vx
+	add r0, r5, #15
+	mov r1, #','
+	strb r1, [r0]			@; guardar ','
+	add r0, r5, #17
+	mov r1, #3
+	mov r2, r7
+	bl _gi_num2str			@; convertir vy
+	add r0, r5, #19
+	mov r1, #')'
+	strb r1, [r0]			@; guardar ')'
+	add r0, r5, #23
+	mov r1, #4
+	mov r2, r8
+	bl _gi_num2str			@; convertir c
+	add r0, r5, #26
+	mov r1, #'\n'
+	strb r1, [r0]			@; guardar '\n'
+	mov r0, r5
+	mov r1, r4	
+	@push {r4}				@; pasar parámetro 4 (zócalo) por la pila
+	bl _gg_escribir
+	@add sp, #4				@; eliminar parámetro 4 de la pila
+	pop {r4-r8, pc}
+
+_gi_message:
+	.asciz "print char (   ,   ) :    \n"
+
+
+	.global _gi_printmat
+	@;Parámetros
+	@; R0: int vx
+	@; R1: int vy
+	@; R2: char m[][8]
+	@; R3: int color
+_gi_printmat:
+	push {r4-r5, lr}
+	ldr r5, =_gd_pidz		@; R5 = dirección _gd_pidz
+	ldr r4, [r5]
+	and r4, #0xf			@; R4 = zócalo actual
+	push {r4}				@; pasar parámetro 4 (zócalo) por la pila
+	@;bl _gg_escribirMat
+	add sp, #4				@; eliminar parámetro 4 de la pila
+	pop {r4-r5, pc}
+
+
+	.global _gi_delay
+	@;Parámetros
+	@; R0: int nsec
+_gi_delay:
+	push {r2-r3, lr}
+	ldr r3, =_gd_pidz		@; R3 = dirección _gd_pidz
+	ldr r2, [r3]
+	and r2, #0xf			@; R2 = zócalo actual
+	cmp r0, #0
+	bhi .Ldelay1
+	bl _gp_WaitForVBlank	@; si nsec = 0, sólo desbanca el proceso
+	b .Ldelay3				@; y salta al final de la rutina
+.Ldelay1:
+	cmp r0, #600
+	bls .Ldelay2
+	mov r0, #600			@; limitar el número de segundos a 600 (10 minutos)
+.Ldelay2:
+	bl _gp_retardarProc
+.Ldelay3:
+	pop {r2-r3, pc}
+
+
+	.global _gi_clear
+_gi_clear:
+	push {r0-r1, lr}
+	ldr r1, =_gd_pidz
+	ldr r0, [r1]
+	and r0, #0xf			@; R0 = zócalo actual
+	mov r1, #0				@; R1 = 0 -> 4 ventanas
+	bl _gs_borrarVentana
+	pop {r0-r1, pc}
+	
 
 .end
 
