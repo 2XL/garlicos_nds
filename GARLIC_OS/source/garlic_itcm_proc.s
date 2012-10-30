@@ -71,19 +71,30 @@ _gp_IntrMain:
 	@; se encarga de actualizar los tics, intercambiar procesos, etc.
 _gp_rsiVBL:
 	push {r4-r7, lr}
+	
+	@; incrementamos la variable tickCount 
+	
 	ldr r4, =_gd_tickCount		@; cargamos la direccion de la variable tickCount
 	ldr r5, [r4]				@; cargamos en r5 el valor de la variable tickCount
 	add r5, #1					@; incrementamos el contador de tics
 	str r5, [r4]				@; guardamos el valor en la variable
+	
+	@; comprobamos el numero de procesos en la cola de Ready
+	
 	ldr r4, =_gd_nReady			@; cargamos la direccion de la variable numReady
 	ldr r5, [r4]				@; cargamos en r5 el valor de la variable numReady
-	ldr r4, =_gd_pidz			@; cargamos la direccion de la variable pidz
-	ldr r7, [r4]				@; cargamos en r7 el valor de la variable pidz
 	cmp r5, #0					@; comprobamos si existe algun proceso en la cola de Ready
 	beq .LrsiVBL_End			@; en caso de que numReady sea 0 saltamos al final de la RSI
-	@; comprobado
+	
+	@; en caso de que haya comprobamos si es el proceso de sistema o no
+	
+	ldr r4, =_gd_pidz			@; cargamos la direccion de la variable pidz
+	ldr r7, [r4]				@; cargamos en r7 el valor de la variable pidz
 	cmp r7, #0					@; comprobamos si se trata del proceso de sistema operativo
 	beq .LrsiVBL_Save			@; en caso de que sea correcto saltamos a salvar proceso
+	
+	@; en caso de que no comprobamos si el proceso ha terminado su ejecucion
+	
 	mov r6, #0xfffffff0			@; cargamos en r6 el valor de los 28 bits altos en 1
 	and r6, r7					@; hacemos un and para saber si pid=0
 	cmp r6, #0					
@@ -92,21 +103,27 @@ _gp_rsiVBL:
 	and r6,r7					@; hacemos un and para saber si z=0
 	cmp r6,#0
 	bne .LrsiVBL_Rest			@; en caso de que no sea igual a 0 el proceso ha terminado su ejecuccion
+
+	@; pasamos a salvar el proceso
+	
 .LrsiVBL_Save:
 	ldr r4, =_gd_nReady			@; cargamos la direccion de la variable numReady
 	ldr r5, [r4]				@; cargamos en r5 el valor de la variable numReady
 	ldr r6, =_gd_pidz			@; cargamos la direccion de la variable pidz
 	ldr r7, [r6]				@; cargamos en r7 el valor de la variable pidz
 	bl _gp_salvarProc			@; llamamos a la funcion de salvar
-.LrsiVBL_Rest:	
+	
+	@; pasamos a restaurar el proceso
+	
+.LrsiVBL_Rest:
 	ldr r4, =_gd_nReady			@; cargamos la direccion de la variable numReady
 	ldr r5, [r4]				@; cargamos en r5 el valor de la variable numReady
 	ldr r6, =_gd_pidz			@; cargamos la direccion de la variable pidz
 	bl _gp_restaurarProc		@; llamamos a la funcion de restaurar	
+	
 .LrsiVBL_End:
 	pop {r4-r7, pc}
-	@;comprobadisimo
-	
+		
 	@; Rutina para salvar el estado del proceso interrumpido en la entrada
 	@; del vector _gd_psv correspondiente al zócalo actual
 	@;Parámetros
@@ -118,79 +135,98 @@ _gp_rsiVBL:
 	@; R5: nuevo número de procesos en READY (+1)
 _gp_salvarProc:
 	push {r8-r11, lr}
+	
+	@; primero guardamos el zocalo del proceso a desbancar en la cola de Ready
+	
 	mov r9, #0xf				@; cargamos en r9 el valor de los 4 bits bajos en 1
 	and r9,r7					@; hacemos un and para tener solo el valor de z
 	ldr r8, =_gd_qReady			@; cargamos en r8 la direccion del vector
 	strb r9, [r8, r5]			@; guardamos el zocalo en la ultima posicion
+	
+	@; incrementamos el contador de procesos pendientes 
+	
 	add r5, #1					@; incrementamos la variable numReady
 	str r5, [r4]				@; guardamos el valor en la variable
+	
+	@; guardamos el pc del proceso a desbancar en el campo PC del vector psv de ese proceso
+	
 	ldr r10, [sp, #0x3c]		@; guardamos el PC del proceso actual en r10
 	ldr r11,=_gd_psv			@; cargamos en r11 la direccion del psv
-	mov r8, #0x40				@; guardamos "64" en r8 para calcular el offset				
-	mul  r9, r8 		
+	lsl r9, #6					@; desplazamos 6 posiciones el zocalo que es lo mismo que multiplicarlo por 64
 	add r8, r9, #0x4			@; la direccion en la que tenemos que guardar es el (zocalox64) + 4 
 	str r10, [r11, r8] 			@; guardar el PC de la pila de la IRQ en el campo PC de _gd_psv[z]
-	mrs r10, CPSR				@; instruccion para copiar el cPRS en un registro
-	and r10, #0x1f				@; solo nos interesa el modo no los otros 27 bits
-	mov r8, #0x40				@; Movemos "64" a r8
-	mul r9, r8					@; Calculamos offset
+	
+	@; guardamos el SPSR del proceso a desbancar porque buscamos el modo anterior en el campo Status
+	
+	mrs r10, SPSR				@; instruccion para copiar el cPRS en un registro
+	lsl r9, #6					@; desplazamos 6 posiciones el zocalo que es lo mismo que multiplicarlo por 64
 	add r8, r9, #0xc			@; Sumamos 12 para ir al campo "Status", el cuarto campo
-	@;comprobado
 	str r10, [r11, r8]			@; guardar el CPSR en en el campo Status de _gd_psv[z]
+	
+	@; guardamos el puntero de la pila en un registro libre antes de cambiar de modo y modificar el sp
+	
 	mov r8, sp					@; guardamos el SP_irq en el registro r8
+	
+	@;cambiamos el modo de ejecucion y en caso de ser usuario lo cambiamos a sistema
+ 
 	mrs r10, SPSR				@; SPSR contiene el estado anterior del proceso
 	and r9, r10, #0x1f			@; solo necesitamos los 5 ultimos bytes
 	cmp r9, #0x10				@; comparamos para saber si el estado anterior era de usuario
 	bne .LSysMod				@; si es diferente al codigo User pasamos
 	mov r9, #0x1f				@; en caso de ser igual lo cambiamos a modo system
-	@;COMPROBAR
 .LSysMod:
 	mrs r10, CPSR				@; guardamos el valor del cpsr en el registro r10				
 	orr r10, r9					@; cambiamos los ultimos 5 bytes
-	msr CPSR, r10				@; cambiamos a modo de ejecucion 
-	ldr r9, [r8, #0x28]			@; cargamos el registro r0 de la IRQ para guardarlos en la pila de procesos
-	push {r9}
-	ldr r9, [r8, #0x2c]			@; cargamos el registro r1
-	push {r9}
-	ldr r9, [r8, #0x30]			@; cargamos el registro r2
-	push {r9}
-	ldr r9, [r8, #0x34]			@; cargamos el registro r3
-	push {r9}
-	ldr r9, [r8, #0x14]			@; cargamos el registro r4
-	push {r9}
-	ldr r9, [r8, #0x18]			@; cargamos el registro r5
-	push {r9}
-	ldr r9, [r8, #0x1c]			@; cargamos el registro r6
-	push {r9}
-	ldr r9, [r8, #0x20]			@; cargamos el registro r7
-	push {r9}
-	ldr r9, [r8]				@; cargamos el registro r8
-	push {r9}
-	ldr r9, [r8, #0x4]			@; cargamos el registro r9
-	push {r9}
-	ldr r9, [r8, #0x8]			@; cargamos el registro r10
-	push {r9}
-	ldr r9, [r8, #0xc]			@; cargamos el registro r11
+	msr CPSR, r10				@; cambiamos a modo de ejecucion
+
+	@; guardamos en la pila del proceso a desbancar los registro de la pila de dicho proceso
+	
+	ldr r9, [r8, #0x3c]			@; cargamos el registro r14 de la IRQ para guardarlos en la pila de procesos
 	push {r9}
 	ldr r9, [r8, #0x38]			@; cargamos el registro r12
 	push {r9}
-	ldr r9, [r8, #0x3c]			@; cargamos el registro r14
+	ldr r9, [r8, #0xc]			@; cargamos el registro r11
 	push {r9}
-	@;COMPROBAR!!!!!!!!!!!!
-	mov r8, #0x40				
+	ldr r9, [r8, #0x8]			@; cargamos el registro r10
+	push {r9}
+	ldr r9, [r8, #0x4]			@; cargamos el registro r9
+	push {r9}
+	ldr r9, [r8]				@; cargamos el registro r8
+	push {r9}
+	ldr r9, [r8, #0x20]			@; cargamos el registro r7
+	push {r9}
+	ldr r9, [r8, #0x1c]			@; cargamos el registro r6
+	push {r9}
+	ldr r9, [r8, #0x18]			@; cargamos el registro r5
+	push {r9}
+	ldr r9, [r8, #0x14]			@; cargamos el registro r4
+	push {r9}
+	ldr r9, [r8, #0x34]			@; cargamos el registro r3
+	push {r9}
+	ldr r9, [r8, #0x30]			@; cargamos el registro r2
+	push {r9}
+	ldr r9, [r8, #0x2c]			@; cargamos el registro r1
+	push {r9}
+	ldr r9, [r8, #0x28]			@; cargamos el registro r0 
+	push {r9}
+	
+	@; guardamos el puntero de la pila del proceso a desbancar en el campo SP del vector psv de ese proceso
+	
 	mov r9, #0xf			    @; cargamos en r9 el valor de los 4 bits bajos en 1
 	and r9,r7					@; hacemos un and para tener solo el valor de z
-	mul  r9, r8 				
+	lsl r9, #6					@; desplazamos 6 posiciones el zocalo que es lo mismo que multiplicarlo por 64				
 	add r8, r9, #0x8			@; la direccion en la que tenemos que guardar es el (zocalox64) + 8
 	str sp, [r11, r8]			@; guardamos el sp del proceso en el campo sp del psv
+	
+	@; volvemos al modo ejecucion IRQ
+	
 	mov r8, #0x12				@; guardamos en r8 el modo IRQ
-	and r10, #0xffffffe0		@;
+	and r10, #0xffffffe0		@; guardamos los flags de la irq para solo cambiar los 5 ultimos bits
 	orr r10, r8
 	msr CPSR, r10				@; cambiamos a modo irq
 	
 	pop {r8-r11, pc}
-	@;comprobado
-
+	
 
 	@; Rutina para restaurar el estado del siguiente proceso en la cola de READY
 	@;Parámetros
@@ -199,9 +235,15 @@ _gp_salvarProc:
 	@; R6: dirección _gd_pidz
 _gp_restaurarProc:
 	push {r8-r11, lr}
+	
+	@; decrementamos el contador de procesos pendientes
+	
 	sub r5, #1					@; decrementamos el contador de procesos de READY
 	str r5, [r4]				@; guardamos el nready en su variable
-	@;Comprobado
+	
+	@; recuperamos la primera posicion de la cola de Ready y desplazamos
+    @; el resto de posiciones para volver a colocar una en la primera posicion
+	
 	ldr r8, =_gd_qReady			@; guardamos la direccion de la cola de ready
 	ldrb r9, [r8]				@; guardamos en r9 el primer zocalo de la cola de ready
 	mov r10, #0
@@ -217,75 +259,100 @@ _gp_restaurarProc:
 .LfinFor:
 	mov r11, #0	
 	strb r11, [r8, r5]			@; guardamos un 0 en la ultima posicion 
-	@;Comprobado
+
+	@; obtenemos el identificador del proceso a restaurar del campo PID del vector psv de ese proceso
+	
 	ldr r8, =_gd_psv
-	mov r11, #0x40				@; r11=64 para calcular el offset de _gd_psv
-	mul r11, r9					@; zocalox64 para acceder al zocalo
+	mov r11, r9, lsl #6			@; desplazamos 6 posiciones el zocalo que es lo mismo que multiplicarlo por 64
 	str r10, [r8, r11]			@; obtenemos el campo pid del proceso z del psv
+	
+	@; construimos el valor combinado PIDz
+	
 	lsl r10, #0x4				@; desplazamos el pid a la izquierda 4 posiciones para hacer sitio al num zocalo
 	orr r10, r9					@; construim el PIDz
 	str r10, [r6]				@; r10=>_gd_pidz
+	
+	@; recuperamos el pc buscando en el campo PC del vector psv de ese zocalo
+	@; le sumamos 4 bytes para compensar el calculo de retorno que realiza la bios
+	@; y lo copiamos en la pila de la IRQ
+	
 	add r11, #0x4				@; zocalo+4 para acceder al campo PC
 	ldr r10, [r8, r11]			@; guardamos en r10 el campo PC 
 	add r10, #0x4				@; sumamos 4 bytes al PC para compensar el retorno de la BIOS
 	mov r8, sp					@; guardamos SP en r8 para el calculo siguiente
 	mov r11, #0x3c				@; r11<=60
 	str r10, [r8, r11]			@; guardamos en PC en SP_irq + 60
-	mov r11, #0x40				@; r11<=64
-	mul r11, r9					@; zocalox64
+	
+	@; recuperamos el CPSR del campo Status del vector psv de ese proceso y lo copiamos en el SPSR de la IRQ
+	
+	mov r11, r9, lsl #6			@; desplazamos 6 posiciones el zocalo que es lo mismo que multiplicarlo por 64
 	add r11, #0xc				@; sumamos 12 para acceder al campo Status
 	ldr r8, =_gd_psv			@; r8<=_gd_psv
 	ldr r10, [r8, r11]			@; guardamos en r10 el valor del campo Status
-	mov r10, #0x10				@; realizamos este cambio forzoso porque cabe la posibilidad de guardar el modo irq en vez del modo que toca y entonces no haria lo que debe hacer			
+	and r11, r10, #0x1f
 	msr SPSR, r10				@; guardamos CPSR (Status) en SPSR_irq
+	
+	@; guardamos el valor del SP de la IRQ en un registro
+	
 	mov r8, sp					@; guardamos SP_irq
 	
-	@;cmp r10, #0x10				@; comparamos para saber si el estado anterior era de usuario
-	@;bne .LSysMod2				@; si es diferente al codigo User pasamos
-	mov r10, #0x1f				@; en caso de ser igual lo cambiamos a modo system
+	@;cambiamos el modo de ejecucion y en caso de ser usuario lo cambiamos a sistema
+	
+	cmp r11, #0x10				@; comparamos para saber si el estado anterior era de usuario
+	bne .LSysMod2				@; si es diferente al codigo User pasamos
+	mov r11, #0x1f				@; en caso de ser igual lo cambiamos a modo system
 .LSysMod2:	
-	mrs r11, CPSR				@; obtenemos CPSR para obtener los FLAGS actuales
-	orr r11, r10				@; cambiamos los ultimos 5 bytes
-	msr CPSR, r11				@; cambiamos a modo de ejecucion 
-	@;comprobado
+	mrs r10, CPSR				@; obtenemos CPSR para obtener los FLAGS actuales
+	orr r10, r11				@; cambiamos los ultimos 5 bytes
+	msr CPSR, r10				@; cambiamos a modo de ejecucion 
+
+	@; recuperamos el puntero de la pila del proceso a restaurar del vector psv
+	@; de ese proceso
+	
 	ldr r10, =_gd_psv			@; r10<=_gd_psv			
-	mov r11, #0x40				@; r11<=64 para el calculo de offset
-	mul r11, r9                 @; zocalox64
-	add r11, #0x8				@; Offset del campo SP
+	lsl r9, #6					@; desplazamos 6 posiciones el zocalo que es lo mismo que multiplicarlo por 64
+	add r11, r9, #0x8			@; Offset del campo SP
 	ldr r13, [r10, r11]			@; r13<= campo SP
+	
+	@; desapilar el valor de los registros de la pila del proceso a la pila IRQ
+	
 	pop {r11}					@; empezamos a desapilar la pila del proceso a restaurar
-	mov r14, r11				@; guardamos el registro r14
-	pop {r11}
-	str r11, [r8, #0x38]		@; guardamos el registro r12
-	pop {r11}
-	str r11, [r8, #0xc]			@; guardamos el registro r11
-	pop {r11}
-	str r11, [r8, #0x8]			@; guardamos el registro r10
-	pop {r11}
-	str r11, [r8, #0x4]			@; guardamos el registro r9
-	pop {r11}
-	str r11, [r8, #0x0]			@; guardamos el registro r8
-	pop {r11}
-	str r11, [r8, #0x20]		@; guardamos el registro r7
-	pop {r11}
-	str r11, [r8, #0x1c]		@; guardamos el registro r6
-	pop {r11}
-	str r11, [r8, #0x18]		@; guardamos el registro r5
-	pop {r11}
-	str r11, [r8, #0x14]		@; guardamos el registro r4
-	pop {r11}
-	str r11, [r8, #0x34]		@; guardamos el registro r3
-	pop {r11}
-	str r11, [r8, #0x30]		@; guardamos el registro r2
+	str r11, [r8, #0x28]		@; guardamos el registro r0
 	pop {r11}
 	str r11, [r8, #0x2c]		@; guardamos el registro r1
 	pop {r11}
-	str r11, [r8, #0x28]		@; guardamos el registro r0
+	str r11, [r8, #0x30]		@; guardamos el registro r2
+	pop {r11}
+	str r11, [r8, #0x34]		@; guardamos el registro r3
+	pop {r11}
+	str r11, [r8, #0x14]		@; guardamos el registro r4
+	pop {r11}
+	str r11, [r8, #0x18]		@; guardamos el registro r5
+	pop {r11}
+	str r11, [r8, #0x1c]		@; guardamos el registro r6
+	pop {r11}
+	str r11, [r8, #0x20]		@; guardamos el registro r7
+	pop {r11}
+	str r11, [r8, #0x0]			@; guardamos el registro r8
+	pop {r11}
+	str r11, [r8, #0x4]			@; guardamos el registro r9
+	pop {r11}
+	str r11, [r8, #0x8]			@; guardamos el registro r10
+	pop {r11}
+	str r11, [r8, #0xc]			@; guardamos el registro r11
+	pop {r11}
+	str r11, [r8, #0x38]		@; guardamos el registro r12
+	pop {r11}					
+	mov r14, r11				@; guardamos el registro r14
+	
+	@; volvemos al modo IRQ
+	
 	mov r11, #0x12
 	mrs r10, CPSR
 	and r10, #0xffffffe0
 	orr r10, r11
 	msr CPSR, r10
+	
 	pop {r8-r11, pc}
 
 
@@ -312,6 +379,10 @@ _gp_numProc:
 	@; R0: 0 si no hay problema, >0 si no se puede crear el proceso
 _gp_crearProc:
 	push {r1-r8, lr}
+	
+	@; comprobamos si el zocalo es el reservado para el sistema operativo 
+	@; o si ya esta ocupado por otro proceso
+	
 	cmp r1, #0				@; en caso de que z sea 0 rechazamos la llamada
 	beq	.LcrearEnd
 	ldr r8, =_gd_psv		@; cargamos la direccion del psv en r8
@@ -320,83 +391,77 @@ _gp_crearProc:
 	ldr r4, [r8, r7]		@; r4= PID del _gd_psv[z]
 	cmp r4, #0				@; en caso de que pid sea diferente a 0 saltamos al final
 	bne .LcrearEnd
-	@;comprobado
+	
+	@; incrementamos la variable pidCount y la guardamos en el campo PID del vector psv de ese proceso
+	
 	ldr r5,  =_gd_pidCount	@; cargamos la direccion de pidCount en r5
 	ldr r6, [r5]			@; cargamos el valor de pidCount en r6
 	add r6, #1				@; incrementamos pidCount
 	str r6, [r5]			@; guardamos el incremento en su variable
 	str r6, [r8, r7]		@; PId de _gd_psv[z]= pidCount
+	
+	@; guardamos la direccion de la rutina inicial en el campo PC en el vector psv de ese proceso
+	
 	add r3, r7, #0x4		@; direccion del PC del psv
 	str r0, [r8, r3]		@; guardamos la funcion en el campo PC en el psv de z
+	
+	@; guardamos los 4 primeros caracteres en el campo keyName en el vector psv de ese proceso
+	
 	add r3, r7, #0x10		@; direccion del keyName del psv
 	str r2, [r8,r3]			@; guardamos el nombre de la funcion en el campo keyName de psv
-	@; comprobado
-	mov r3, #0x200			@; guardamos en r3 el offset de la pila _gd_stacks (200 hexadecimal = 512 decimal = 128 posiciones x 4 bytes)
-	mul r3, r1				@; calculamos el offset del _gd_stacks
 	
-	@; COMPROBAR
-	sub r3, #0x4				@; como se trata del vector de pilas de procesos tenemos que apilar desdel final de su offset
+	@; calculamos la direccion base de la pila del proceso
+	
+	mov r3, r1, lsl #9		@; calculamos el offset del _gd_stacks
+	
+	@; guardamos en la pila del proceso el valor inicial de los registros
+	
+
 	ldr r5, =_gd_stacks		@; guardamos la direccion del vector de pilas
-	mov r6, #0
-	str r6, [r5, r3]		@; guardamos 0 en el registro 0 del vector de pilas
-	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
-	str r6, [r5, r3]		@; guardamos 0 en el registro 1 del vector de pilas
-	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
-	str r6, [r5, r3]		@; guardamos 0 en el registro 2 del vector de pilas
-	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
-	str r6, [r5, r3]		@; guardamos 0 en el registro 3 del vector de pilas
-	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
-	str r6, [r5, r3]		@; guardamos 0 en el registro 4 del vector de pilas
-	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
-	str r6, [r5, r3]		@; guardamos 0 en el registro 5 del vector de pilas
-	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
-	str r6, [r5, r3]		@; guardamos 0 en el registro 6 del vector de pilas
-	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
-	str r6, [r5, r3]		@; guardamos 0 en el registro 7 del vector de pilas
-	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
-	str r6, [r5, r3]		@; guardamos 0 en el registro 8 del vector de pilas
-	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
-	str r6, [r5, r3]		@; guardamos 0 en el registro 9 del vector de pilas
-	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
-	str r6, [r5, r3]		@; guardamos 0 en el registro 10 del vector de pilas
-	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
-	str r6, [r5, r3]		@; guardamos 0 en el registro 11 del vector de pilas
-	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
-	str r6, [r5, r3]		@; guardamos 0 en el registro 12 del vector de pilas
-	sub r3, #0x4			@; restamos 4 para guardar en la siguiente posicion
-	ldr r6, =_gp_terminarProc 	@; cargamos la direccion de terminarproc
 	
+	sub r3, #0x4			@; como se trata del vector de pilas de procesos tenemos que apilar desdel final de su offset
+	ldr r6, =_gp_terminarProc 	@; cargamos la direccion de terminarproc
 	str r6, [r5, r3]		@; guardamos la direccion de terminarproc en el registro 14 del vector de pilas
+	mov r6, #0
+	mov r8, #0
+.Lfor2:						@; bucle para inicializar los registros 0-12
+	cmp r8, #0xd
+	bge .Lfinfor2
+	sub r3, #0x4			@; restamos 4 para guardar en cada posicion siguiente
+	str r6, [r5, r3]		@; guardamos 0 en el registro 12 del vector de pilas
+	add r8, #1
+	b .Lfor2
+.Lfinfor2:
+	
+	ldr r8, =_gd_psv		@; cargamos la direccion del psv en r8
+	
+	@; guardamos el valor del puntero de la pila en el campo SP del vector psv de este proceso
+	
 	add r7, #0x8			@; en el registro 7 teniamos guardada la direccion del psv de z solo hay que sumar 8 para escribir en SP
 	add r5, r3
-	@; COMPROBAR
 	str r5, [r8, r7]		@; guardamos el registro 13 en el campo SP del psv
+	
+	@; guardamos el valor 10 que corresponde al modo ejecucion en el campo Status del vector psv de este proceso
+	
 	mov r6, #0x10			@; codigo del modo usuario
 	add r7, #0x4		
 	str r6, [r8, r7]		@; guardamos el codigo en el campo status del psv
+	
+	@; inicializamos otros valores del vector psv de este proceso
+	
 	mov r6, #0		
-	add r7, #0x8
-	str r6, [r8, r7]		@; inicializamos numticks	
 	add r7, #0x4
-	str r6, [r8, r7]		@; inicializamos workTicks
+.Lfor3:	
+	cmp r5, #0xb			 @; bucle en el que inicializamos las variables de psv
+	bge .Lfinfor3
 	add r7, #0x4
-	str r6, [r8, r7]		@; inicializamos pcontrol
-	add r7, #0x4
-	str r6, [r8, r7]		@; inicializamos pchar 0-3
-	add r7, #0x4
-	str r6, [r8, r7]		@; inicializamos pchar 4-7
-	add r7, #0x4
-	str r6, [r8, r7]		@; inicializamos pchar 8-11
-	add r7, #0x4
-	str r6, [r8, r7]		@; inicializamos pchar 11-15
-	add r7, #0x4
-	str r6, [r8, r7]		@; inicializamos pchar 16-19
-	add r7, #0x4
-	str r6, [r8, r7]		@; inicializamos pchar 20-23
-	add r7, #0x4
-	str r6, [r8, r7]		@; inicializamos pchar 24-27
-	add r7, #0x4
-	str r6, [r8, r7]		@; inicializamos pchar 28-31
+	str r6, [r8, r7]		@; de numticks a pchar
+	add r5, #1
+	b .Lfor3
+.Lfinfor3:
+	
+	@; guardamos el zocalo en la ultima posicion de la cola de Ready e incrememtamos la variable de nReady
+	
 	ldr r7, =_gd_nReady		@; guardamos la direccion de la variable numReady
 	ldr r8, =_gd_qReady		@; guardamos la direccion de la cola de ready
 	ldr r6, [r7]			@; cargamos el valor de la variable numReady
@@ -405,8 +470,9 @@ _gp_crearProc:
 	str r6, [r7]			@; guardamos la r6 en la variable numReady
 	mov r0, #0
 .LcrearEnd:
+
 	pop {r1-r8, pc}
-	@;comprobado
+
 
 
 	@; Función para terminar un proceso de usuario:
