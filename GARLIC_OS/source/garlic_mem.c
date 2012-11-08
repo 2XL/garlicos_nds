@@ -133,7 +133,7 @@ intFunc _gm_cargarPrograma(char *keyName) {
 	
 	// NOTA -- keyName es en mayus, así que hay que cambiar el nombre del archivo generado hola.elf por HOLA.elf
 	
-	char filename[19];
+	char filename[20];
 	strcpy(filename,path);
 	strcat(filename,keyName);
 	strcat(filename,extension);
