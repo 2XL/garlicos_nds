@@ -133,6 +133,7 @@ _gi_print:
 	ldr r3, =_gd_pidz		@; R3 = dirección _gd_pidz
 	ldr r2, [r3]
 	and r2, #0xf			@; R2 = zócalo actual
+
 	bl _gg_escribir
 	pop {r2-r3, pc}
 
@@ -151,10 +152,12 @@ _gi_printchar:
 	ldr r5, =_gd_pidz		@; R5 = dirección _gd_pidz
 	ldr r4, [r5]
 	and r4, #0xf			@; R4 = zócalo actual
+
 	push {r4}				@; pasar parámetro 4 (zócalo) por la pila
 	bl _gg_escribirCar
 	add sp, #4				@; eliminar parámetro 4 de la pila
 	pop {r4-r8, pc}
+
 
 
 
@@ -170,7 +173,9 @@ _gi_printmat:
 	ldr r4, [r5]
 	and r4, #0xf			@; R4 = zócalo actual
 	push {r4}				@; pasar parámetro 4 (zócalo) por la pila
+
 	bl _gg_escribirMat
+
 	add sp, #4				@; eliminar parámetro 4 de la pila
 	pop {r4-r5, pc}
 
@@ -192,7 +197,9 @@ _gi_delay:
 	bls .Ldelay2
 	mov r0, #600			@; limitar el número de segundos a 600 (10 minutos)
 .Ldelay2:
+
 	@;bl _gp_retardarProc
+
 .Ldelay3:
 	pop {r2-r3, pc}
 

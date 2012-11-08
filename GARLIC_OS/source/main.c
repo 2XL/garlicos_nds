@@ -1,6 +1,8 @@
 /*------------------------------------------------------------------------------
 
+
 	"main.c" : fase 2 / ProgG
+
 
 	Programa de control del sistema operativo GARLIC, versión 1.0
 
@@ -38,6 +40,7 @@ void gestionSincronismos();
 void inicializarSistema();
 
 
+
 //------------------------------------------------------------------------------
 int main(int argc, char **argv) {
 //------------------------------------------------------------------------------
@@ -62,6 +65,7 @@ int main(int argc, char **argv) {
 		_gp_WaitForVBlank();		// retardo del proceso de sistema
 	}
 	return 0;			
+
 }
 
 
@@ -181,6 +185,7 @@ int escogerOpcion(char *opciones[], int num_opciones)
 void seleccionarPrograma()
 {
 	intFunc start;
+
 	char num[3];
 	int ind_prog, i;
 
@@ -203,6 +208,7 @@ void seleccionarPrograma()
 	_gg_escribir("*** Seleccionar programa :\n", 1, za);
 	ind_prog = escogerOpcion(progs, num_progs);
 	
+
 	start = _gm_cargarPrograma(progs[ind_prog]);
 	if (start)
 	{	_gp_crearProc(start, za, progs[ind_prog]);

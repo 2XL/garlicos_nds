@@ -19,7 +19,6 @@ _gp_WaitForVBlank:
 	ldr r0, =__irq_flags
 .Lwait_espera:
 	mcr p15, 0, lr, c7, c0, 4	@; HALT (suspender hasta nueva interrupción)
-	nop						@; instrucción de relleno, para asegurar que se
 	ldr r1, [r0]			@; ejecuta la "ldr r1, [r0]" al salir de HALT
 	tst r1, #1				@; comprobar flag IRQ_VBL
 	beq .Lwait_espera		@; repetir bucle mientras no exista IRQ_VBL
@@ -62,7 +61,6 @@ _gp_IntrMain:
 	orr	r3, r3, r1			@; activar el flag correspondiente a la interrupción
 	str	r3, [r0]			@; servida (todas si no se ha encontrado el maneja-
 							@; dor correspondiente)
-	
 	mov	pc,lr				@; retornar al gestor de la excepción IRQ de la BIOS
 
 
@@ -152,15 +150,19 @@ _gp_salvarProc:
 	
 	ldr r10, [sp, #0x3c]		@; guardamos el PC del proceso actual en r10
 	ldr r11,=_gd_psv			@; cargamos en r11 la direccion del psv
+
 	lsl r9, #6					@; desplazamos 6 posiciones el zocalo que es lo mismo que multiplicarlo por 64
 	add r8, r9, #0x4			@; la direccion en la que tenemos que guardar es el (zocalox64) + 4 
+
 	str r10, [r11, r8] 			@; guardar el PC de la pila de la IRQ en el campo PC de _gd_psv[z]
 	
 	@; guardamos el SPSR del proceso a desbancar porque buscamos el modo anterior en el campo Status
 	
 	mrs r10, SPSR				@; instruccion para copiar el cPRS en un registro
+
 	lsl r9, #6					@; desplazamos 6 posiciones el zocalo que es lo mismo que multiplicarlo por 64
 	add r8, r9, #0xc			@; Sumamos 12 para ir al campo "Status", el cuarto campo
+
 	str r10, [r11, r8]			@; guardar el CPSR en en el campo Status de _gd_psv[z]
 	
 	@; guardamos el puntero de la pila en un registro libre antes de cambiar de modo y modificar el sp
@@ -214,8 +216,10 @@ _gp_salvarProc:
 	
 	mov r9, #0xf			    @; cargamos en r9 el valor de los 4 bits bajos en 1
 	and r9,r7					@; hacemos un and para tener solo el valor de z
+
 	lsl r9, #6					@; desplazamos 6 posiciones el zocalo que es lo mismo que multiplicarlo por 64				
 	add r8, r9, #0x8			@; la direccion en la que tenemos que guardar es el (zocalox64) + 8
+
 	str sp, [r11, r8]			@; guardamos el sp del proceso en el campo sp del psv
 	
 	@; volvemos al modo ejecucion IRQ
@@ -263,7 +267,9 @@ _gp_restaurarProc:
 	@; obtenemos el identificador del proceso a restaurar del campo PID del vector psv de ese proceso
 	
 	ldr r8, =_gd_psv
+
 	mov r11, r9, lsl #6			@; desplazamos 6 posiciones el zocalo que es lo mismo que multiplicarlo por 64
+
 	str r10, [r8, r11]			@; obtenemos el campo pid del proceso z del psv
 	
 	@; construimos el valor combinado PIDz
@@ -278,14 +284,15 @@ _gp_restaurarProc:
 	
 	add r11, #0x4				@; zocalo+4 para acceder al campo PC
 	ldr r10, [r8, r11]			@; guardamos en r10 el campo PC 
-	add r10, #0x4				@; sumamos 4 bytes al PC para compensar el retorno de la BIOS
 	mov r8, sp					@; guardamos SP en r8 para el calculo siguiente
 	mov r11, #0x3c				@; r11<=60
 	str r10, [r8, r11]			@; guardamos en PC en SP_irq + 60
 	
 	@; recuperamos el CPSR del campo Status del vector psv de ese proceso y lo copiamos en el SPSR de la IRQ
 	
+
 	mov r11, r9, lsl #6			@; desplazamos 6 posiciones el zocalo que es lo mismo que multiplicarlo por 64
+
 	add r11, #0xc				@; sumamos 12 para acceder al campo Status
 	ldr r8, =_gd_psv			@; r8<=_gd_psv
 	ldr r10, [r8, r11]			@; guardamos en r10 el valor del campo Status
@@ -309,9 +316,11 @@ _gp_restaurarProc:
 	@; recuperamos el puntero de la pila del proceso a restaurar del vector psv
 	@; de ese proceso
 	
+
 	ldr r10, =_gd_psv			@; r10<=_gd_psv			
 	lsl r9, #6					@; desplazamos 6 posiciones el zocalo que es lo mismo que multiplicarlo por 64
 	add r11, r9, #0x8			@; Offset del campo SP
+
 	ldr r13, [r10, r11]			@; r13<= campo SP
 	
 	@; desapilar el valor de los registros de la pila del proceso a la pila IRQ
@@ -356,6 +365,15 @@ _gp_restaurarProc:
 	pop {r8-r11, pc}
 
 
+	@; Rutina para actualizar la cola de procesos retardados, poniendo en
+	@; cola de READY aquellos cuyo número de tics de retardo sea 0
+_gp_actualizarDelay:
+	push {lr}
+
+
+	pop {pc}
+	
+	
 	.global _gp_numProc
 	@;Resultado
 	@; R0: número total de procesos cargados en el sistema
@@ -364,9 +382,12 @@ _gp_numProc:
 	mov r0, #1				@; contar siempre 1 proceso en RUN
 	ldr r1, =_gd_nReady
 	ldr r2, [r1]			@; R2 = número de procesos en cola de READY
-	add r0, r2				@; añadir procesos en READY
+	add r0, r2				@; añadir procesos preparados
+	ldr r1, =_gd_nDelay
+	ldr r2, [r1]			@; R2 = número de procesos en cola de DELAY
+	add r0, r2				@; añadir procesos retardados
 	pop {r1-r2, pc}
-
+	
 
 	.global _gp_crearProc
 	@; prepara un proceso para ser ejecutado, creando su entorno de ejecución y
@@ -375,6 +396,7 @@ _gp_numProc:
 	@; R0: intFunc funcion,
 	@; R1: int zocalo,
 	@; R2: char *nombre
+	@; R3: int argumen
 	@;Resultado
 	@; R0: 0 si no hay problema, >0 si no se puede crear el proceso
 _gp_crearProc:
@@ -386,8 +408,8 @@ _gp_crearProc:
 	cmp r1, #0				@; en caso de que z sea 0 rechazamos la llamada
 	beq	.LcrearEnd
 	ldr r8, =_gd_psv		@; cargamos la direccion del psv en r8
-	mov r3, #0x40				
-	mul r7, r1, r3	 		@; multiplicamos el zocalo por 64
+	mov r3, #0x3c			@; guardamos el numero 60 en r8 para multiplicarlo por el zocalo
+	mul r7, r1, r3	 		@; multiplicamos el zocalo por 60
 	ldr r4, [r8, r7]		@; r4= PID del _gd_psv[z]
 	cmp r4, #0				@; en caso de que pid sea diferente a 0 saltamos al final
 	bne .LcrearEnd
@@ -483,13 +505,77 @@ _gp_crearProc:
 _gp_terminarProc:
 	ldr r0, =_gd_pidz
 	ldr r1, [r0]			@; R1 = valor actual de PID + zócalo
-	and r1, r1, #0xf		@; R1 = zócalo del proceso desbancado
+	and r1, r1, #0xf		@; R1 = zócalo del proceso a terminar
+	bl _gp_inhibirIRQs
 	str r1, [r0]			@; guardar zócalo con PID = 0, para no salvar estado			
 	ldr r2, =_gd_psv
-	add r2, r1, lsl #6		@; R2 = dirección base _gd_psv[zocalo]
+	mov r10, #92
+	mul r11, r1, r10
+	add r2, r11				@; R2 = dirección base _gd_psv[zocalo]
 	mov r3, #0
 	str r3, [r2]			@; borrar PID del bloque de estado del proceso
+	str r3, [r2, #20]		@; borrar porcentaje de USO de la CPU
+	ldr r0, =_gd_sincMain
+	ldr r2, [r0]			@; R2 = valor actual de la variable de sincronismo
+	mov r3, #1
+	mov r3, r3, lsl r1		@; R3 = máscara con bit correspondiente al zócalo
+	orr r2, r3
+	str r2, [r0]			@; actualizar variable de sincronismo
+	bl _gp_desinhibirIRQs
+.LterminarProc_inf:
 	bl _gp_WaitForVBlank	@; pausar procesador
+	b .LterminarProc_inf	@; asegurar el cambio de contexto
+
+
+	.global _gp_matarProc
+	@; Función para destruir un proceso de usuario:
+	@; borra el PID del PSB del zócalo indiciado por parámetro, para indicar
+	@; que esa entrada del vector _gd_psv está libre; elimina el índice de
+	@;  zócalo de la cola de READY o de la cola de DELAY, según el caso
+	@; Parámetros:
+	@;	R0:	zócalo del proceso a matar (entre 1 y 15).
+_gp_matarProc:
+	push {lr} 
+
+
+	pop {pc}
 
 	
+	.global _gp_retardarProc
+	@; retarda la ejecución de un proceso durante cierto número de segundos,
+	@; colocándolo en la cola de DELAY
+	@;Parámetros
+	@; R0: int nsec
+_gp_retardarProc:
+	push {lr}
+
+
+	pop {pc}
+
+
+	.global _gp_inihibirIRQs
+	@; pone el bit IME (Interrupt Master Enable) a 0, para inhibir todas
+	@; las IRQs y evitar así posibles problemas debidos al cambio de contexto
+_gp_inhibirIRQs:
+	push {r11-r12, lr}
+	mov	r12, #0x4000000
+	add	r12, r12, #0x208	@; R12 = base registros de control de interrupciones
+	mov r11, #0
+	strh r11, [r12]			@; REG_IME = 0 (interrupciones no permitidas)
+	pop {r11-r12, pc}
+
+
+	.global _gp_desinihibirIRQs
+	@; pone el bit IME (Interrupt Master Enable) a 1, para desinhibir todas
+	@; las IRQs
+_gp_desinhibirIRQs:
+	push {r11-r12, lr}
+	mov	r12, #0x4000000
+	add	r12, r12, #0x208	@; R12 = base registros de control de interrupciones
+	mov r11, #1
+	strh r11, [r12]			@; REG_IME = 1 (interrupciones permitidas)
+	pop {r11-r12, pc}
+
+
 .end
+
