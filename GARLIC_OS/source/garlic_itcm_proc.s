@@ -150,16 +150,16 @@ _gp_salvarProc:
 	
 	ldr r10, [sp, #0x3c]		@; guardamos el PC del proceso actual en r10
 	ldr r11,=_gd_psv			@; cargamos en r11 la direccion del psv
-	mov r8, #0x3c				@; guardamos el numero 60 en r8 para multiplicarlo por el zocalo
-	mul r8, r9					@; multiplicamos 60 por el zocalo
-	add r8, #0x4				@; la direccion en la que tenemos que guardar es el (zocalox60) + 4 
+	mov r8, #0x5c				@; guardamos el numero 92 en r8 para multiplicarlo por el zocalo
+	mul r8, r9					@; multiplicamos 92 por el zocalo
+	add r8, #0x4				@; la direccion en la que tenemos que guardar es el (zocalox92) + 4 
 	str r10, [r11, r8] 			@; guardar el PC de la pila de la IRQ en el campo PC de _gd_psv[z]
 	
 	@; guardamos el SPSR del proceso a desbancar porque buscamos el modo anterior en el campo Status
 	
 	mrs r10, SPSR				@; instruccion para copiar el cPRS en un registro
-	mov r8, #0x3c				@; guardamos el numero 60 en r8 para multiplicarlo por el zocalo
-	mul r8, r9					@; multiplicamos 60 por el zocalo
+	mov r8, #0x5c				@; guardamos el numero 92 en r8 para multiplicarlo por el zocalo
+	mul r8, r9					@; multiplicamos 92 por el zocalo
 	add r8, #0xc				@; Sumamos 12 para ir al campo "Status", el cuarto campo
 	str r10, [r11, r8]			@; guardar el CPSR en en el campo Status de _gd_psv[z]
 	
@@ -214,8 +214,8 @@ _gp_salvarProc:
 	
 	mov r9, #0xf			    @; cargamos en r9 el valor de los 4 bits bajos en 1
 	and r9,r7					@; hacemos un and para tener solo el valor de z
-	mov r8, #0x3c				@; guardamos el numero 60 en r8 para multiplicarlo por el zocalo
-	mul r8, r9					@; multiplicamos 60 por el zocalo				
+	mov r8, #0x5c				@; guardamos el numero 92 en r8 para multiplicarlo por el zocalo
+	mul r8, r9					@; multiplicamos 92 por el zocalo				
 	add r8, #0x8				@; la direccion en la que tenemos que guardar es el (zocalox64) + 8
 	str sp, [r11, r8]			@; guardamos el sp del proceso en el campo sp del psv
 	
@@ -264,8 +264,8 @@ _gp_restaurarProc:
 	@; obtenemos el identificador del proceso a restaurar del campo PID del vector psv de ese proceso
 	
 	ldr r8, =_gd_psv
-	mov r11, #0x3c				@; guardamos el numero 60 en r11 para multiplicarlo por el zocalo
-	mul r11, r9					@; multiplicamos 60 por el zocalo
+	mov r11, #0x5c				@; guardamos el numero 92 en r11 para multiplicarlo por el zocalo
+	mul r11, r9					@; multiplicamos 92 por el zocalo
 	str r10, [r8, r11]			@; obtenemos el campo pid del proceso z del psv
 	
 	@; construimos el valor combinado PIDz
@@ -286,8 +286,8 @@ _gp_restaurarProc:
 	
 	@; recuperamos el CPSR del campo Status del vector psv de ese proceso y lo copiamos en el SPSR de la IRQ
 	
-	mov r11, #0x3c				@; guardamos el numero 60 en r11 para multiplicarlo por el zocalo
-	mul r11, r9					@; multiplicamos 60 por el zocalo
+	mov r11, #0x5c				@; guardamos el numero 92 en r11 para multiplicarlo por el zocalo
+	mul r11, r9					@; multiplicamos 92 por el zocalo
 	add r11, #0xc				@; sumamos 12 para acceder al campo Status
 	ldr r8, =_gd_psv			@; r8<=_gd_psv
 	ldr r10, [r8, r11]			@; guardamos en r10 el valor del campo Status
@@ -312,8 +312,8 @@ _gp_restaurarProc:
 	@; de ese proceso
 	
 	ldr r10, =_gd_psv			@; r10<=_gd_psv	
-	mov r11, #0x3c				@; guardamos el numero 60 en r8 para multiplicarlo por el zocalo
-	mul r11, r9					@; multiplicamos 60 por el zocalo
+	mov r11, #0x5c				@; guardamos el numero 92 en r8 para multiplicarlo por el zocalo
+	mul r11, r9					@; multiplicamos 92 por el zocalo
 	add r11, #0x8				@; Offset del campo SP
 	ldr r13, [r10, r11]			@; r13<= campo SP
 	
@@ -402,8 +402,8 @@ _gp_crearProc:
 	cmp r1, #0				@; en caso de que z sea 0 rechazamos la llamada
 	beq	.LcrearEnd
 	ldr r8, =_gd_psv		@; cargamos la direccion del psv en r8
-	mov r3, #0x3c			@; guardamos el numero 60 en r8 para multiplicarlo por el zocalo
-	mul r7, r1, r3	 		@; multiplicamos el zocalo por 60
+	mov r3, #0x5c			@; guardamos el numero 92 en r8 para multiplicarlo por el zocalo
+	mul r7, r1, r3	 		@; multiplicamos el zocalo por 92
 	ldr r4, [r8, r7]		@; r4= PID del _gd_psv[z]
 	cmp r4, #0				@; en caso de que pid sea diferente a 0 saltamos al final
 	bne .LcrearEnd
