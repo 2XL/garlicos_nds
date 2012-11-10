@@ -266,7 +266,7 @@ _gp_restaurarProc:
 	ldr r8, =_gd_psv
 	mov r11, #0x5c				@; guardamos el numero 92 en r11 para multiplicarlo por el zocalo
 	mul r11, r9					@; multiplicamos 92 por el zocalo
-	str r10, [r8, r11]			@; obtenemos el campo pid del proceso z del psv
+	ldr r10, [r8, r11]			@; obtenemos el campo pid del proceso z del psv
 	
 	@; construimos el valor combinado PIDz
 	
@@ -383,6 +383,8 @@ _gp_numProc:
 	pop {r1-r2, pc}
 	
 
+	@; CAMBIOS QUE NO HAY QUE REALIZAR
+
 	.global _gp_crearProc
 	@; prepara un proceso para ser ejecutado, creando su entorno de ejecución y
 	@; colocándolo en la cola de READY
@@ -402,8 +404,8 @@ _gp_crearProc:
 	cmp r1, #0				@; en caso de que z sea 0 rechazamos la llamada
 	beq	.LcrearEnd
 	ldr r8, =_gd_psv		@; cargamos la direccion del psv en r8
-	mov r3, #0x5c			@; guardamos el numero 92 en r8 para multiplicarlo por el zocalo
-	mul r7, r1, r3	 		@; multiplicamos el zocalo por 92
+	mov r6, #0x5c			@; guardamos el numero 92 en r8 para multiplicarlo por el zocalo
+	mul r7, r1, r6	 		@; multiplicamos el zocalo por 92
 	ldr r4, [r8, r7]		@; r4= PID del _gd_psv[z]
 	cmp r4, #0				@; en caso de que pid sea diferente a 0 saltamos al final
 	bne .LcrearEnd
@@ -418,43 +420,47 @@ _gp_crearProc:
 	
 	@; guardamos la direccion de la rutina inicial en el campo PC en el vector psv de ese proceso
 	
-	add r3, r7, #0x4		@; direccion del PC del psv
-	str r0, [r8, r3]		@; guardamos la funcion en el campo PC en el psv de z
+	add r6, r7, #0x4		@; direccion del PC del psv
+	str r0, [r8, r6]		@; guardamos la funcion en el campo PC en el psv de z
 	
 	@; guardamos los 4 primeros caracteres en el campo keyName en el vector psv de ese proceso
 	
-	add r3, r7, #0x10		@; direccion del keyName del psv
-	str r2, [r8,r3]			@; guardamos el nombre de la funcion en el campo keyName de psv
+	add r6, r7, #0x10		@; direccion del keyName del psv
+	str r2, [r8,r6]			@; guardamos el nombre de la funcion en el campo keyName de psv
 	
 	@; calculamos la direccion base de la pila del proceso
 	
-	mov r3, r1, lsl #9		@; calculamos el offset del _gd_stacks
+	mov r4, r1, lsl #9		@; calculamos el offset del _gd_stacks
 	
 	@; guardamos en la pila del proceso el valor inicial de los registros
 	
 
 	ldr r5, =_gd_stacks		@; guardamos la direccion del vector de pilas
 	
-	sub r3, #0x4			@; como se trata del vector de pilas de procesos tenemos que apilar desdel final de su offset
+	sub r4, #0x4			@; como se trata del vector de pilas de procesos tenemos que apilar desdel final de su offset
 	ldr r6, =_gp_terminarProc 	@; cargamos la direccion de terminarproc
-	str r6, [r5, r3]		@; guardamos la direccion de terminarproc en el registro 14 del vector de pilas
+	str r6, [r5, r4]		@; guardamos la direccion de terminarproc en el registro 14 del vector de pilas
 	mov r6, #0
 	mov r8, #0
-.Lfor2:						@; bucle para inicializar los registros 0-12
-	cmp r8, #0xd
+.Lfor2:						@; bucle para inicializar los registros 1-12
+	cmp r8, #0xc
 	bge .Lfinfor2
-	sub r3, #0x4			@; restamos 4 para guardar en cada posicion siguiente
-	str r6, [r5, r3]		@; guardamos 0 en el registro 12 del vector de pilas
+	sub r4, #0x4			@; restamos 4 para guardar en cada posicion siguiente
+	str r6, [r5, r4]		@; guardamos 0 en el registro 12 del vector de pilas
 	add r8, #1
 	b .Lfor2
 .Lfinfor2:
 	
+	mov r6, r3				@; movemos a r6 el argumento
+	sub r4, #0x4		    @; restamos 4 para guardar en cada posicion siguiente
+	str r6, [r5, r4]		@; guardamos el argumento en r0
+
 	ldr r8, =_gd_psv		@; cargamos la direccion del psv en r8
 	
 	@; guardamos el valor del puntero de la pila en el campo SP del vector psv de este proceso
 	
 	add r7, #0x8			@; en el registro 7 teniamos guardada la direccion del psv de z solo hay que sumar 8 para escribir en SP
-	add r5, r3
+	add r5, r4
 	str r5, [r8, r7]		@; guardamos el registro 13 en el campo SP del psv
 	
 	@; guardamos el valor 10 que corresponde al modo ejecucion en el campo Status del vector psv de este proceso
@@ -489,7 +495,7 @@ _gp_crearProc:
 
 	pop {r1-r8, pc}
 
-
+	@; ACABAN LOS CAMBIOS QUE NO HAY QUE REALIZAR
 
 	@; Función para terminar un proceso de usuario:
 	@; borra el PID del PSB del zócalo actual, para indicar que esa entrada
