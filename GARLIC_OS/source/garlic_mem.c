@@ -10,36 +10,30 @@
 #include <filesystem.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <stdlib.h>
+#include <dirent.h>
+#include <string.h>
 #include <garlic_system.h>	// definición de funciones y variables de sistema
 
+/* llegirWordsYHalfWords: a partir de un vector que contiene todos los datos, en nuestro caso
+un fitxero.elf, el indice desde donde queremos comenzar a cojer el word o el half worden este vector, i
+los saltos que queremos dar si es un word 4 si e sun half 2. Nos permite retornar un word o half. */
+int llegirWordsYHalfWords (char *entFile, int index, int saltos){ /*Funcio pera llegir Words o Half*/
+
+int i; /*iterador del bucle*/
+int vector_paralel, retorn=0; /*variables auxiliars per a fer el desplaçament dels bits*/
 
 
-#define MEMORIA_PROGRAMA 0x02100000
+	for(i=index; i<index+saltos; i++) /* bucle per a anar desde la poscio index on comença el word fins a 4 mes enlla*/
+	{
+		vector_paralel = entFile[i];     /*guardem la posicio i en un vector copia anomenat vector_paralel*/
+		vector_paralel <<= 8*(i-index); /*desplaçament de vits a l'esquerra*/
+		retorn |= vector_paralel;	  /* retornem el resultat que ens interesa*/
+	}
+	return(retorn);
 
 
-
-// Actualiza la posición y devuelve el word
-int juntar_word (char *file, int* pos)
-{
-	int num = *pos;
-	*pos = *pos + 4;
-	return (file[num+3] << 24) | (file[num+2] << 16) | (file[num+1] << 8) | file[num];
 }
-
-
-// Actualiza la posición y devuelve el half-word
-int juntar_half (char *file, int* pos)
-{
-	int num = *pos;
-	*pos = *pos + 2;
-	return (file[num+1] << 8) | file[num];
-}
-
-
-
-
-
 
 /* _gm_relocatar: a partir de una dirección de memoria (destino), de un vector
 			que contiene todo el fichero ELF (file) y de una dirección 'virtual'
@@ -49,74 +43,55 @@ int juntar_half (char *file, int* pos)
 			virtual y sumando la dirección destino */
 void _gm_relocatar(unsigned int *destino, char *file, unsigned int pAddr)
 {
-	
-	int pos=24;									//pos del entry
-	
-	pos=pos+8;	//Saltamos entry y phoff		//pos 24 -> 32
-	int shoff =		juntar_word (file, &pos);	//pos 32 -> 36
-	pos=pos+10;	//Saltamos phentsize y phnum	//pos 36 -> 46
-	int shentsize =	juntar_half (file, &pos);	//pos 46 -> 48
-	int shnum = 	juntar_half (file, &pos);	//pos 48 -> 50
-	
-	
-	// Variables de las secciones
-	pos = shoff;
-	int pos_ini = pos;
-	int contador, sh_offset, sh_size, sh_link, sh_info, sh_entsize;
-	
-	// Variables de relocalizaciones
-	int r_offset, contador_r, pos_r, pos_r_ini;
-	unsigned int* direccion;					// Para trabajar con la dirección destino sin cambiar su variable
-	
-	
-	
-	for (contador=0; contador<shnum; contador++, pos=pos_ini+shentsize, pos_ini=pos)	// Mientras haya más secciones...
-	{
-		pos=pos+4;		// Nos saltamos sh_name
-		// Sólo nos interesan los que tengan type 9
-		if ( juntar_word (file, &pos) == 9)	// si sh_type es 9 (SHT REL)  pos  shoff -> shoff+4
-		{
-			pos=pos+8;	// Saltamos sh_flags y sh_addr    pos  shoff+4  -> shoff+12
-			sh_offset = juntar_word (file, &pos);		//pos  shoff+12 -> shoff+16
-			sh_size = 	juntar_word (file, &pos);		//pos  shoff+16 -> shoff+20
-			sh_link = 	juntar_word (file, &pos);		//pos  shoff+20 -> shoff+24
-			sh_info = 	juntar_word (file, &pos);		//pos  shoff+24 -> shoff+28
-			pos=pos+4;	// Nos saltamos sh_addralign  	  pos  shoff+28 -> shoff+32
-			sh_entsize =juntar_word (file, &pos);		//pos  shoff+32 -> shoff+36
-			
-			
-			
-			// Relocalizaciones
-			pos_r = sh_offset;
-			pos_r_ini = pos_r;
-			printf(">> seccion relocalizadores ( ):\n");
-			
-			for (contador_r=0; contador_r<(sh_size/sh_entsize); contador_r++, pos_r=pos_r_ini+sh_entsize, pos_r_ini=pos_r)
-			{
-				// if r_info == 514 (0x0202)  - r_info tiene un offset inicial de 4 bytes respecto a r_offset, de ahí que sume para acceder al info y luego reste para el offset
-				pos_r = pos_r+4;
-				if ( juntar_word (file, &pos_r) == 514)		//pos_r  sh_offset+4 -> sh_offset+8
-				{
-					pos_r = pos_r-8;							//pos_r  sh_offset+8 -> sh_offset
-					r_offset =	juntar_word (file, &pos_r);		//pos_r  sh_offset   -> sh_offset+4
-					
-					printf(">>> rel %d (R_ARM_ABS32): 0x%X\n", contador_r, r_offset);
-					
-					direccion = (unsigned int*)((int)destino + r_offset - pAddr);
-					*(direccion) = (int)destino + *(direccion) - pAddr ;
-					
-				}	//endif r
-				
-			}	// endfor r
-			
-		}	// endif sh
+	int e_shentsize=llegirWordsYHalfWords(file,46,2);/* guardem el tamañ de cada entrada de la taula de seccions*/
+	//iprintf("%i tamañ de cada entrada de la taula de seccions\n",e_shentsize);
+	//int e_shnum=llegirWordsYHalfWords(file,48,2); /* guardem el nuemro d'entradas de la taula de seccions*/
+	//printf("%i nuemro d'entradas de la taula de seccions\n",e_shnum);
+	//int tamany_taulaseccions=e_shentsize*e_shnum; /*multipliquem el tamany de cada entrada pel nuemro de entrades i tenim el tamany de la taula de seccions*/
+	//iprintf("%i tamany de la taula de seccions\n",tamany_taulaseccions);
+	int e_shoff=llegirWordsYHalfWords(file,32,4); /*guardamos el shoffset que es la posicion de la taula de secciones*/
+	//iprintf("%i posicion de la taula de secciones\n",e_shoff);
+	int i;
+	for(i=0;i<e_shentsize;i++){ //bucle per a accedir a tote sles seccions de la taula de seccions
+		int sh_type;
+		sh_type=llegirWordsYHalfWords(file,e_shoff+(i*e_shentsize)+4,4);//llegim sh_type per veure si es de tipus 9
+		if (sh_type==9){ //comprovem si es de tipus 9 el que ens interesa
+			int sh_offset; 
+			sh_offset=llegirWordsYHalfWords(file,e_shoff+(i*e_shentsize)+16,4); //llegim sh_offset
+			//iprintf("%x \n",sh_offset);
 		
-	}	// endfor sh
-	
-	
+			int sh_size;
+			sh_size=llegirWordsYHalfWords(file,e_shoff+(i*e_shentsize)+20,4);//llegim sh_size per calcular els relocs
+			int sh_entsize;
+			sh_entsize=llegirWordsYHalfWords(file,e_shoff+(i*e_shentsize)+36,4);//llegim sh_entsize per calcular els relocs
+			int relocs=sh_size/sh_entsize;// calculem el numero de relocalitzadors a partir de la mida total i la de cada entrada
+			//iprintf("%i Num Relocs: \n",relocs); //numero de relocalitzadors
+			iprintf(">> seccion relocalizadores (2)\n");
+			for(i=0;i<(relocs);i++){ //bucle per a accedir a tots els relocalitzadors
+					
+				int r_offset=llegirWordsYHalfWords(file,sh_offset+(i*8),4);//llegir el r_offset del reloc
+				//iprintf("%x  ESTAAA \n",r_offset);
+				int r_info=llegirWordsYHalfWords(file,sh_offset+(i*8)+4,4); //llegir el r_info del reloc
+				//iprintf("%x  ESTAAA \n",r_info);
+				r_info=r_info& 0x00000FF; //agafar els 8 bits baixos del r_info per veure si es de tipus 2,o R_ARM_ABS32
+				if(r_info==2){ //comprovem si r_info es de tipus 2
+					iprintf(">>> rel %i (R_ARM_ABS32): 0x%x\n",i,r_offset);
+					int dirrec = ((unsigned int) destino) + r_offset - pAddr; // obtener la direccion de memoria a relocalizar
+					//iprintf("\n Direccion a relocalizar es %x  \n", dirrec);
+					int contngut_dirrec = *((unsigned int *) dirrec);
+					//iprintf("\n el contenido de la dirección es %x  \n", contngut_dirrec);
+					int relocalizacion = ((unsigned int) destino) + contngut_dirrec - pAddr;
+					*((unsigned int *) dirrec) = relocalizacion;
+					//iprintf("\n relocalizacion es %x  \n", relocalizacion);
+				}
+						
+					
+			}
+
+		}
+		
+	}
 }
-
-
 
 
 
@@ -125,118 +100,78 @@ void _gm_relocatar(unsigned int *destino, char *file, unsigned int pAddr)
 //---------------------------------------------------------------------------------
 intFunc _gm_cargarPrograma(char *keyName) {
 //---------------------------------------------------------------------------------
-	
 	unsigned int result = 0;
-	
-	const char* path = "/Programas/";
-	const char* extension = ".elf";
-	
-	// NOTA -- keyName es en mayus, así que hay que cambiar el nombre del archivo generado hola.elf por HOLA.elf
-	
-
-	char filename[20];
-
-	strcpy(filename,path);
-	strcat(filename,keyName);
-	strcat(filename,extension);
-	
-	FILE* inf = fopen(filename,"rb");
-	
-	
-	if(inf)
+	char ruta[19]="Programas/"; /*una taula de caracters amb la part de la ruta que no vaira*/
+	strcat(ruta, keyName); /* concadenacio de strings o taula de caracters de la ruta amb el keyName*/
+	strcat(ruta, ".elf"); /* una altra concadenacio per a poder afegirla extensio el .elf*/
+	FILE* inf = fopen(ruta,"rb"); /* obrir el arxiu en mode rb read bytes*/
+	if(inf) /* si s'ha obert be es a dir existeix el ficher llavors fem lo que toca*/
 	{
-		int len;
-		
-		fseek(inf,0,SEEK_END);
-		len = ftell(inf);
-		fseek(inf,0,SEEK_SET);
-		
-		
-		char* puntero = (char*)malloc(len);
-		if (fread(puntero, 1, len, inf) != len)
-			iprintf("Error al leer bytes del archivo\n");
-		else
-		{			
-			
-			//int entry, phoff, shoff, phentsize, phnum, shentsize, shnum;
-			int entry, phoff, phentsize, phnum;
-			
-			/*  EI_NIDENT 16 nos dice que e_ident estará en la decimosexta posición, puntero[15]
-				Por lo tanto, si vamos sumando el num de bytes de cada variable de la estructura:
-				pos[15] e_ident			pos[16-17] e_type		pos[18-19] e_machine
-				pos[20-23] e_version	pos[24-27] e_entry		pos[28-31] e_phoff
-				pos[32-35] e_shoff		pos[36-39] e_flags		pos[40-41] e_ehsize
-				pos[42-43] e_phentsize	pos[44-45] e_phnum		pos[46-47] e_shentsize
-				pos[48-49] e_shnum		pos[50-51] e_shstrnx
+				int len; /* enter per a enmagatzemar la llargada del fitxer*/
+				fseek(inf,0,SEEK_END);
+				len = ftell(inf);		/*savem la mida del fitxer i la guardem a len*/
+				fseek(inf,0,SEEK_SET);
 				
-				Como los que necesitamos usan más de un byte habrá que unirlos con la función juntar_"tipo"
-			*/
-			
-			int pos=24;									//pos del entry
-			
-			entry = 	juntar_word (puntero, &pos);	//pos 24 -> 28
-			phoff =		juntar_word (puntero, &pos);	//pos 28 -> 32
-			pos=pos+10;									//pos 32 -> 42
-			phentsize =	juntar_half (puntero, &pos);	//pos 42 -> 44
-			phnum = 	juntar_half (puntero, &pos);	//pos 44 -> 46
-			
-			
-			printf("> cabeceras de programa :   %d\n", phnum);
-			
-			
-			// Variables segmentos
-			int destino = MEMORIA_PROGRAMA;		// 0x02100000
-			pos = phoff;
-			int pos_ini = pos;
-			int p_paddr = 0;					// Para evitar el warning de que podría no estar declarada
-			int contador, p_offset, p_filesz, p_memsz, p_flags;
-			
-			
-			
-			for (contador=0; contador<phnum; contador++, pos=pos_ini+phentsize, pos_ini=pos)	// Mientras haya más segmentos...
+		char *entireFile = (char*)malloc(len+1); /* reservem un espai de memoria del tamany del fitxer +1*/
+		if (entireFile) /* si em pogut crear el espai de memoria */
+		{
+			entireFile[len] = 0;
+			if(fread(entireFile,1,len,inf) != len) /* ocmprovet si s'ha fet tot be*/
 			{
-				// Sólo nos interesan los que tengan type 1
-				if (juntar_word (puntero, &pos) == 1) // Si el p_type es 1 (PT_LOAD)    	pos phoff -> phoff+4
-				{
-					p_offset = 	juntar_word (puntero, &pos);	//pos phoff+4  -> phoff+8
-					pos=pos+4;	// nos saltamos p_vaddr			  pos phoff+8  -> phoff+12
-					p_paddr = 	juntar_word (puntero, &pos);	//pos phoff+12 -> phoff+16
-					p_filesz = 	juntar_word (puntero, &pos);	//pos phoff+16 -> phoff+20
-					p_memsz = 	juntar_word (puntero, &pos);	//pos phoff+20 -> phoff+24
-					p_flags = 	juntar_word (puntero, &pos);	//pos phoff+24 -> phoff+28
-					
-					
-					// Copiar a la memoria
-					dmaCopy((const void*)&puntero[p_offset], (void*)destino, p_filesz);
-					
-					
-					printf("> segmento num. %d copiado:\n", contador);
-					printf("   despl. en fichero :  %d\n", p_offset);
-					printf("   tam. en fichero : %d\n", p_filesz);
-					printf("   tam. en memoria : %d\n", p_memsz);
-					
-					
-					_gm_relocatar((unsigned int*)destino, puntero, p_paddr);
-					
-					destino = destino + p_memsz;				// Se actualiza destino
-					
-					
-					
-				}	// endif p
-				
-			}	// endfor p
+				iprintf("savage error reading the bytes from the file!\n");
+				free(entireFile);/* si no sa fet be lliverem l'espai de memoria reservat*/
+			}
+			else{ /* si s'ha pogut crear tot be començem a enmagatzemar les dades que ens interesen*/
 			
-			
-			free(puntero);
-			result = MEMORIA_PROGRAMA + entry - p_paddr;				// La función debe devolver esta dirección de arranque
-			
-		}
-		
-		fclose(inf);
-		
-	}
-	
+			/*acceder  a  la  cabecera  ELF  del  fichero,  para  obtener  la  posición  y
+tamaño de la tabla de segmentos y de la tabla de secciones,
+• obtener la dirección de inicio del programa e_entry,*/
 
+				int e_entry=llegirWordsYHalfWords(entireFile,24,4); /* guardem la direccio d'entrada del programa*/
+				//iprintf("%x direccio d'entrada del programa\n",e_entry);
+				int e_phoff=llegirWordsYHalfWords(entireFile,28,4); /* guardamos el phoffset que es la posicio de la taula de segments*/
+				//iprintf("%x desplazamiento \n",e_phoff);
+				int e_phentsize=llegirWordsYHalfWords(entireFile,42,2); /* guardem el tamañ de cada entrada de la taula de segments*/
+				//iprintf("%i tamañ de cada entrada de la taula de segments\n",e_phentsize);
+				int e_phnum=llegirWordsYHalfWords(entireFile,44,2); /* guardem el nuemro d'entradas de la taula de segments*/
+				//iprintf("%i nuemro d'entradas de la taula de segments\n",e_phnum);
+				//int tamany_taulaseg=e_phentsize*e_phnum; /*multipliquem el tamany de cada entrada pel nuemro de entrades i tenim el tamany de la taula de segments*/
+				//iprintf("%i tamany de la taula de segments\n",tamany_taulaseg);
+				iprintf("> cabeceras de programa %i:\n",e_phnum);
+				
+				/*acceder a la tabla de segmentos; para cada segmento de tipo PT_LOAD:*/
+				int i=0;
+				for(i=0;i<e_phentsize;i++){
+					int p_type;
+					p_type=llegirWordsYHalfWords(entireFile,e_phoff+(i*e_phentsize),4);
+					if (p_type==1){
+						//iprintf("HOLAAAAAAAAAAA \n");
+						iprintf("> segmento num. %i copiado:\n",i);
+						//Cargar todo lo que necesitamos p_paddr,p_offset,p_filesz,p_memsize
+						int p_paddr=llegirWordsYHalfWords(entireFile,e_phoff+(i*e_phentsize)+12,4);
+						int p_offset=llegirWordsYHalfWords(entireFile,e_phoff+(i*e_phentsize)+4,4);
+						int p_filesz=llegirWordsYHalfWords(entireFile,e_phoff+(i*e_phentsize)+16,4);
+						int p_memsz=llegirWordsYHalfWords(entireFile,e_phoff+(i*e_phentsize)+20,4);
+						iprintf("    despl. en fichero: %i \n",p_offset);
+						iprintf("    tam. en fichero: %i\n",p_filesz);
+						iprintf("    tam. en memoria: %i \n",p_memsz);
+						//iprintf("%x \n",p_paddr);
+						//iprintf("%x \n",p_filesz);
+						dmaCopy (&entireFile[p_offset],(void*)0x02100000, p_filesz); //copiar en la direccion destino todo el contenido del .elf
+						_gm_relocatar((unsigned int *)0x02100000, entireFile,p_paddr);
+						result=0x02100000+e_entry-p_paddr;
+				
+					}
+				else{
+				}
+				}
+				
+				
+				}
+				
+		}
+		fclose(inf); /*tancar el fitxer*/
+	}
 	return ((intFunc) result);
 }
 
