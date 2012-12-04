@@ -354,14 +354,18 @@ int main(int argc, char **argv) {
 	_gg_escribir("********************************", 1, 0);
 	_gg_escribir("*** Inicio fase 2 / ProgG\n", 1, 0);
 
-	num_progs = 4;
-	progs[0] = "BORR";		// se supone que estos programas están disponibles
+	num_progs = 6;
+	progs[5] = "BORR";		// se supone que estos programas están disponibles
 	progs[1] = "CRON";		// en el directorio "Programas" de las estructura
 	progs[2] = "HOLA";		// de ficheros de Nitrofiles
 	progs[3] = "PONG";
+	progs[4] = "DESC";
+	progs[0] = "LABE";
+	
 	while (1)						// bucle infinito
 	{	controlInterfaz();
 		gestionSincronismos();
+		_gp_WaitForVBlank();		// retardo del proceso de sistema
 		_gp_WaitForVBlank();		// retardo del proceso de sistema
 	}
 	return 0;			

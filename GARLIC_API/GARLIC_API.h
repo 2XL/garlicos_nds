@@ -18,8 +18,7 @@ extern int GARLIC_random();
 		la función devuelve 0 si la división és correcta, o diferente de 0
 		si hay algún problema (división por cero).
 		ATENCIóN: sólo procesa números naturales de 32 bits SIN signo. */
-extern int GARLIC_divmod(unsigned int num, unsigned int den,
-							unsigned int * quo, unsigned int * mod);
+extern int GARLIC_divmod(unsigned int num, unsigned int den, unsigned int * quo, unsigned int * mod);
 
 	/* GARLIC_num2str: convertir el número pasado por valor en el parámetro num
 		a una representación en códigos ASCII de los dígitos decimales corres-

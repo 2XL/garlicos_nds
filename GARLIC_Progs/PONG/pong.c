@@ -28,6 +28,9 @@ int _start(int arg)				/* función de inicio : no se usa 'main' */
 	GARLIC_printchar( x, y, 95, color);	// escribir caracter por primera vez
 	do
 	{
+	
+	 
+	 
 		GARLIC_delay(arg);
 		GARLIC_printchar( x, y, 0, color);	// borrar caracter anterior
 		x += dirx;
@@ -42,7 +45,10 @@ int _start(int arg)				/* función de inicio : no se usa 'main' */
 		{	y = 0;						// forzar posiciones (x+y) pares
 			diry = 1;						// forzar dirección derecha
 		}
-		GARLIC_printchar( x, y, 95, color);	// reescribir caracter		
+		GARLIC_printchar( x, y, 95, color);	// reescribir caracter
+
+ 	
+	
 	} while (1); 				// no acaba nunca
 	return 0;
 }

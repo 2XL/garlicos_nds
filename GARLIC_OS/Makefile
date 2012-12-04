@@ -102,8 +102,12 @@ export _ADDFILES	:=	-d $(CURDIR)/$(NITRODATA)
  
 #---------------------------------------------------------------------------------
 $(BUILD):
+	@echo clean ...
+	@rm -fr $(BUILD) $(TARGET).elf $(TARGET).nds
 	@[ -d $@ ] || mkdir -p $@
 	@make --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
+	@echo "runing $(TARGET).nds with DesmuME"
+	@$(DESMUME)/DeSmuME.exe $(TARGET).nds &
 
 #---------------------------------------------------------------------------------
 clean:
